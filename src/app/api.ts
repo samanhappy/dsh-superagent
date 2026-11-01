@@ -1,7 +1,7 @@
 /** Type-only management API contract between the web panel and host routes, imported by the panel without bundling host code. */
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { PromptConfig, Prompts } from './prompts.ts'
-import type { PromptsView, StateView, TicketPageView } from './http.ts'
+import type { LoginPageView, PromptsView, StateView, TicketPageView } from './http.ts'
 import type { HistoryView } from './settings-history.ts'
 import type { OverviewView } from './views/overview.ts'
 import type { SettingsView } from './views/settings.ts'
@@ -24,6 +24,9 @@ export interface Api {
   'GET sources': { response: SourceStatusView[] }
   'GET settings': { response: SettingsView }
   'POST sources/:id/labels': { response: { added: string[] } }
+  /** Starts the Source's interactive login; `code` answers a `need_verifycode` attempt, and no body is a start too. */
+  'POST sources/:id/login': { body?: { code?: string }; response: LoginPageView }
+  'GET sources/:id/login': { response: LoginPageView }
   'GET threads': { query?: Paged & { filter?: ThreadFilter }; response: ThreadListView }
   'GET threads/:key': { query?: { limit?: number; before?: string; around?: string }; response: ThreadDetailView }
   'POST threads/:key/unsubscribe': { response: { removed: boolean; thread: string; context_delivery: Delivery } }

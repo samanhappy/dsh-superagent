@@ -55,6 +55,15 @@ export const WecomBotSchema = z.object({
   secret: z.string().trim().max(512).default(''),
   wsUrl: z.string().trim().regex(/^(wss?:\/\/[^\s]+)?$/, 'ws:// or wss:// URL').default(''),
 })
+/**
+ * The WeChat bot account behind the iLink long poll: the token scanning the login code produces, the iLink API base URL
+ * (blank for the public one), and the `bot_agent` the requests declare. Nothing here is verified over the network at setup.
+ */
+export const WeixinAccountSchema = z.object({
+  token: z.string().trim().max(512).default(''),
+  baseUrl: z.string().trim().regex(/^(https?:\/\/[^\s]+)?$/, 'http:// or https:// URL').default(''),
+  botAgent: z.string().trim().max(256).default(''),
+})
 /** The GitLab instance, the agent's glab wrapper, and the projects the Source watches; all three are verified at setup. */
 export const GitlabAccountsSchema = z.object({
   host: z.string().trim().regex(/^[A-Za-z0-9.-]+(?::[0-9]+)?$/, 'host').default('gitlab.com'),
@@ -71,19 +80,23 @@ export const PingcodeAccountsSchema = z.object({
 })
 /** Source configuration keys that affect deployment setup and trigger a restart when changed. */
 export const SETUP_FIELDS: Readonly<Record<string, readonly string[]>> = { github: Object.keys(GithubAccountsSchema.shape), feishu: Object.keys(FeishuBotSchema.shape),
-  wecom: Object.keys(WecomBotSchema.shape), gitlab: Object.keys(GitlabAccountsSchema.shape), pingcode: Object.keys(PingcodeAccountsSchema.shape) }
+  wecom: Object.keys(WecomBotSchema.shape), weixin: Object.keys(WeixinAccountSchema.shape), gitlab: Object.keys(GitlabAccountsSchema.shape),
+  pingcode: Object.keys(PingcodeAccountsSchema.shape) }
 
 export interface Deployment extends Machine {
   repository: string
   github: { cli: string; login: string; noreply: string }
   feishu?: FeishuBot
   wecom?: WecomBot
+  weixin?: WeixinAccount
   gitlab?: GitlabAccount
   pingcode?: PingcodeAccount
 }
 export interface FeishuBot { cli: string; appId: string; brand: 'feishu' | 'lark'; botId: string; name: string }
 /** The verified WeCom bot identity; `wsUrl` overrides the public long-connection address for a private deployment. */
 export interface WecomBot { botId: string; secret: string; wsUrl?: string }
+/** The WeChat bot token the iLink long poll authenticates with, its API base URL, and the `bot_agent` requests declare. */
+export interface WeixinAccount { token: string; baseUrl?: string; botAgent?: string }
 /** The verified GitLab account and its projects, canonical paths as GitLab reports them; `email` is the commit identity for workers. */
 export interface GitlabAccount { host: string; cli: string; login: string; id: number; email: string; projects: string[] }
 /** The PingCode account behind the skill's user token, the skill directory that holds its scripts, and the projects it watches. */
@@ -259,4 +272,14 @@ export async function resolveWecomBot(wecom: unknown): Promise<WecomBot | undefi
   if (!botId && !secret) return undefined
   if (!botId || !secret) throw new SetupError('wecomUnset')
   return { botId, secret, ...(wsUrl ? { wsUrl } : {}) }
+}
+
+/**
+ * Reads the WeChat bot account the Source long-polls with; a blank token leaves the Source out (it reports `weixinUnset`
+ * while enabled). Like WeCom's credentials, whether the token works shows in the Source's health once it polls.
+ */
+export async function resolveWeixinAccount(weixin: unknown): Promise<WeixinAccount | undefined> {
+  const { token, baseUrl, botAgent } = WeixinAccountSchema.parse(weixin ?? {})
+  if (!token) return undefined
+  return { token, ...(baseUrl ? { baseUrl } : {}), ...(botAgent ? { botAgent } : {}) }
 }

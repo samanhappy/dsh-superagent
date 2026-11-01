@@ -14,6 +14,10 @@
     - id: dsh-superagent-wecom
       name: dsh-superagent/wecom-watch
       disabled: true
+    # Optional WeChat Source; log the bot in with the QR code on its Source card after enabling.
+    - id: dsh-superagent-weixin
+      name: dsh-superagent/weixin-watch
+      disabled: true
     # Optional GitLab Source; requires configuring a glab wrapper and projects after enabling.
     - id: dsh-superagent-gitlab
       name: dsh-superagent/gitlab-watch

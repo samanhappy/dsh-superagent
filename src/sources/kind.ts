@@ -73,6 +73,36 @@ export interface ThreadContext<C> {
   image?(agent: Agent, commands: Commands, trigger: Trigger, message: { id: string; text: string }, key: string, stateDir: string,
     signal: AbortSignal): Promise<unknown>
 }
+/**
+ * What the management panel shows for an interactive account login. `wait` shows the code and keeps polling, `scaned`
+ * asks the operator to confirm on the phone, `need_verifycode` asks for the code the phone displays, and `confirmed` is
+ * the only terminal success; `expired`, `blocked` and `failed` need a new `start`.
+ */
+export interface LoginView {
+  status: 'wait' | 'scaned' | 'need_verifycode' | 'expired' | 'blocked' | 'confirmed' | 'failed'
+  /** The code as a standalone SVG document for the panel to show; absent once `confirmed`. */
+  svg?: string
+  /** The login's own sentence for the operator about the current status. */
+  message?: string
+  /** Configuration fields to save once `confirmed`, in the shape the kind's `schema` accepts. */
+  credentials?: Record<string, unknown>
+}
+/**
+ * Interactive account login a source kind adds to its settings card; the panel drives it and saves the returned
+ * `credentials` as the Source's configuration, which restarts dsh-superagent when a field is in `SETUP_FIELDS`.
+ */
+export interface SourceLogin {
+  /** Label of the panel button that starts the login. */
+  label: Localized
+  /** One sentence on what the operator does, shown beside the button. */
+  hint?: Localized
+  /** Starts a new attempt, or returns the running one, with its code as `svg`. */
+  start(): Promise<LoginView>
+  /** Polls the running attempt; without a running attempt it answers `expired`. */
+  wait(): Promise<LoginView>
+  /** Supplies the code the phone displayed when the attempt answered `need_verifycode`. */
+  verify?(code: string): Promise<LoginView>
+}
 export interface TriggerContext {
   readonly messageId: string
   read(commands: Commands, part: ContextPartName, cursor?: string): Promise<ContextPart>
@@ -100,6 +130,8 @@ export interface SourceKind<C extends Record<string, unknown> = Record<string, u
   channel?: SourceChannel<C>
   /** Bounded context reader for assessments; assessments of a kind without `threadContext` read none. */
   threadContext?: ThreadContext<C>
+  /** Interactive login the panel offers on this kind's settings card; kinds authenticated elsewhere omit it. */
+  login?: SourceLogin
   /** Maps a search query to candidate Thread keys (such as `github:12`) and Trigger search terms (such as a Feishu `om_` ID). */
   find?(query: string): { threads: string[]; terms: string[] }
   /** Returns the ID of the Trigger whose message this Trigger replies to, when derivable without a network read. */

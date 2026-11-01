@@ -13,6 +13,9 @@
 # WeCom is optional too: uncomment to enable its Source, then set the intelligent robot's ID and secret on the WeCom Source.
 # - id: dsh-superagent-wecom
 #   disabled: false
+# WeChat is optional too: uncomment to enable its Source, then log the bot in with the QR code on the WeChat Source.
+# - id: dsh-superagent-weixin
+#   disabled: false
 # GitLab is optional too: uncomment to enable its Source, then set the glab wrapper and projects on the GitLab Source.
 # - id: dsh-superagent-gitlab
 #   disabled: false

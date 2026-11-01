@@ -17,6 +17,7 @@
     "./github-watch": "./lib/github-watch.js",
     "./feishu-watch": "./lib/feishu-watch.js",
     "./wecom-watch": "./lib/wecom-watch.js",
+    "./weixin-watch": "./lib/weixin-watch.js",
     "./gitlab-watch": "./lib/gitlab-watch.js",
     "./pingcode-watch": "./lib/pingcode-watch.js",
     "./package.json": "./package.json",
@@ -60,6 +61,7 @@
   "packageManager": "pnpm@11.7.0",
   "dependencies": {
     "proper-lockfile": "4.1.2",
+    "qrcode-generator": "1.4.4",
     "zod": "4.4.3"
   },
   "peerDependencies": {

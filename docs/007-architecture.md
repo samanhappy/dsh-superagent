@@ -182,7 +182,7 @@ Each kind has a health entry under its name. It reports an error once one of its
 
 ### Sources
 
-Sources extend the host through `SourceKind`, defined in `src/sources/kind.ts`. A kind declares its identity, title, description, configuration `schema` and `fields`, derived `facts`, and `health` entries. Optional behavior includes `scope`, a `channel` (`allowed`, `send`, `link`), `threadContext`, `find`, `policy`, `environment` and `refreshLabels`.
+Sources extend the host through `SourceKind`, defined in `src/sources/kind.ts`. A kind declares its identity, title, description, configuration `schema` and `fields`, derived `facts`, and `health` entries. Optional behavior includes `scope`, a `channel` (`allowed`, `send`, `link`), `threadContext`, `find`, `policy`, `environment`, `refreshLabels` and an interactive `login` the panel drives by showing its QR code and saving the account it returns.
 
 `SourceRegistry` (`registry.ts`) owns registered kinds and stored instances, and implements the Engine's `SourceScope`. Registration claims health entries on `HealthBoard`; duplicate claims and reserved `sync:` names are refused. A SourceContext writes only through its registration's claimed entries, so reports after unregistration do nothing.
 
@@ -283,7 +283,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 - Executor tools bind reported pull requests with `readPull` and `claimPull`, using the GitHub context exposed by Runtime.
 - MasterAssessor reads repository files with `readRepositoryPath`.
 - Sessions and Prompts register built-in skills only for GitHub, GitLab, Feishu and PingCode. Migration converts their schema-10 records.
-- Setup probes only GitHub, GitLab, Feishu and PingCode account fields (`SETUP_FIELDS`). Only those Sources receive account setup problems through `SourceContext.problem`.
+- Setup probes only GitHub, GitLab, Feishu and PingCode account fields (`SETUP_FIELDS`); the WeCom and WeChat fields are read there without a probe, so their credentials are known only once the Source connects. Only Feishu, GitLab and PingCode Sources receive account setup problems through `SourceContext.problem`.
 
 
 ## Modules
@@ -379,6 +379,12 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/wecom-trigger.ts` | WeCom callbacks as Triggers, conversation addresses and the text a media message shows |
 | `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, `sent` or `gone` |
 | `src/sources/wecom-read.ts` | The conversation window the Source remembers, read as `wecomThreadContext` |
+| `src/sources/weixin.ts` | The WeChat kind and plugin entry, exported as `./weixin-watch`: the iLink bot long poll, kept running with backoff and health, and its login button |
+| `src/sources/weixin-api.ts` | The iLink bot API: request headers and `base_info`, `getupdates` long polling with its cursor, `sendmessage`, and the stale-token (`-14`) error |
+| `src/sources/weixin-trigger.ts` | WeChat messages as Triggers, direct-chat addresses and the text a media message shows |
+| `src/sources/weixin-channel.ts` | The WeChat Channel: text replies through the account the long poll authenticated with, `sent` or `gone` |
+| `src/sources/weixin-read.ts` | The conversation window the Source remembers, and the latest reply `context_token` of each peer, read as `weixinThreadContext` |
+| `src/sources/weixin-login.ts` | The WeChat QR login the panel drives: fetching and refreshing the code, polling its status, the verification code, and the SVG the card shows |
 | `src/sources/gitlab.ts` | The GitLab kind and plugin entry, exported as `./gitlab-watch`: a poll round of each verified project's issues and merge requests with their notes, and subscribed Threads |
 | `src/sources/gitlab-trigger.ts` | GitLab notes, Issue bodies and merge request descriptions as Triggers, and GitLab addresses |
 | `src/sources/gitlab-channel.ts` | The GitLab Channel: notes on an issue or merge request, `sent` or `gone` |
@@ -425,6 +431,9 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
 | `tests/wecom.spec.ts` | The WeCom Source: Trigger translation, the long connection's subscription, acks, callbacks and take-over, replies, and the conversation window assessments read |
+| `tests/weixin.spec.ts` | The WeChat transport: Trigger translation, request headers and bodies, the long-poll cursor, replies, and the conversation window assessments read |
+| `tests/weixin-loop.spec.ts` | The WeChat kind and loop: its fields, scope, Policy rows and variables, a poll round that stores Triggers before moving the cursor, and the health of failures and a stale token |
+| `tests/panel-login.spec.tsx` | The panel's login card: the QR code, the verification-code input, and the account saved on confirmation |
 | `tests/feishu-read.spec.ts`, `tests/github-read.spec.ts` | Feishu and GitHub reads |
 | `tests/admission-context.spec.ts`, `tests/feishu-image.spec.ts` | The Thread window of assessments, and Feishu image reads |
 | `tests/assessment.spec.ts` | What the MasterAssessor keeps per Eval, and when it lets go |

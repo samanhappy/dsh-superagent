@@ -78,6 +78,13 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
 The Source opens one long connection per bot and reconnects with backoff. WeCom keeps a single connection for a bot, so a second dsh-superagent or another client subscribed with the same bot takes the connection over; the Source reports that as an error and stops. Setup only checks that both credentials are present: a wrong secret shows as the WeCom Source's health, not as a setup problem, because it is known only once the connection is attempted.
 
+### WeChat bot (optional)
+
+1. Enable the `dsh-superagent-weixin` entry in the profile, as the Feishu entry is enabled.
+2. Open the WeChat Source's card under **Settings → Sources**, choose **扫码登录**, and scan the code with WeChat on a phone; confirm on the phone, and the token is saved and dsh-superagent restarts.
+
+The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct messages and replies in the same conversation. It is a personal WeChat bot built on Tencent's bot API: it sees only what people send it, keeps no readable history (assessments read the window this process remembered), and sends text only. A token the backend rejects with `-14` shows as the Source's health, and the Source stops for an hour so the account can be logged in again; setup only checks that a token is saved, so a wrong token never blocks the rest of dsh-superagent.
+
 ### Agent GitLab account (optional)
 
 1. Create a GitLab account for the agent and add it to every watched project as a Developer, which is the lowest role that may push branches.
@@ -130,7 +137,7 @@ Run the profile-creation command only for a new installation. If the profile alr
 
 ## Machine configuration
 
-Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for WeCom, the `dsh-superagent-wecom` entry; for GitLab, the `dsh-superagent-gitlab` entry; for PingCode, the `dsh-superagent-pingcode` entry. The `webserver` entry sets the panel's port.
+Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for WeCom, the `dsh-superagent-wecom` entry; for WeChat, the `dsh-superagent-weixin` entry; for GitLab, the `dsh-superagent-gitlab` entry; for PingCode, the `dsh-superagent-pingcode` entry. The `webserver` entry sets the panel's port.
 
 | Key | Required | Meaning |
 | --- | --- | --- |
