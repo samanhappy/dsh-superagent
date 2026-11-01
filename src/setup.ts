@@ -1,7 +1,7 @@
 /** Structured startup and configuration errors with the settings location where the operator can fix them. */
 import { fill } from './infra/text.ts'
 
-export type SetupPlace = 'deployment' | 'github' | 'feishu' | 'gitlab' | 'pingcode'
+export type SetupPlace = 'deployment' | 'github' | 'feishu' | 'wecom' | 'gitlab' | 'pingcode'
 export const SETUP_PROBLEMS = {
   foreignFile: ['deployment', '{file} was not written by dsh-superagent; move it, or choose another state directory.'],
   gitTooOld: ['deployment', 'git does not read the credential configuration dsh-superagent writes for github.com or the GitLab instance; dsh-superagent needs git 2.32 or later.'],
@@ -19,6 +19,7 @@ export const SETUP_PROBLEMS = {
   feishuBotNotReady: ['feishu', 'The bot identity of app {app} is {status}; configure the app secret with lark-cli.'],
   feishuUserIdentity: ['feishu', 'The bot lark-cli allows user identities (strict mode {mode}); give the bot its own lark-cli configuration in strict mode bot, as docs/006-deployment.md describes.'],
   feishuNoBot: ['feishu', 'The Feishu bot API did not return the bot\'s open_id.'],
+  wecomUnset: ['wecom', 'The WeCom Source needs both the intelligent robot\'s ID and its secret from the WeCom admin console.'],
   gitlabProjectUnset: ['gitlab', 'The GitLab Source names no project.'],
   gitlabCliMissing: ['gitlab', 'The agent GitLab CLI (glab) was not found.'],
   gitlabCliFailed: ['gitlab', 'The agent GitLab CLI (glab) does not work.'],

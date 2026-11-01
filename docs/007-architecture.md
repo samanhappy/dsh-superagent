@@ -374,6 +374,11 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/feishu-read.ts` | The `feishu/` reads of a Trigger's message, its root, parent and topic, and `feishuThreadContext`, which gives them to assessments with their images |
 | `src/sources/admission-context.ts` | The bounded window an assessment starts from: the first pages of a Trigger's Thread, read through its kind, and the messages around the Trigger |
 | `src/sources/feishu-image.ts` | Reads a Feishu message's image as an attachment for the assessing Session |
+| `src/sources/wecom.ts` | The WeCom kind and plugin entry, exported as `./wecom-watch`: the bot's long connection, kept open with backoff, health and reconnect |
+| `src/sources/wecom-ws.ts` | The WeCom intelligent-robot long connection: subscription, heartbeat, message and event callbacks, and markdown replies |
+| `src/sources/wecom-trigger.ts` | WeCom callbacks as Triggers, conversation addresses and the text a media message shows |
+| `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, `sent` or `gone` |
+| `src/sources/wecom-read.ts` | The conversation window the Source remembers, read as `wecomThreadContext` |
 | `src/sources/gitlab.ts` | The GitLab kind and plugin entry, exported as `./gitlab-watch`: a poll round of each verified project's issues and merge requests with their notes, and subscribed Threads |
 | `src/sources/gitlab-trigger.ts` | GitLab notes, Issue bodies and merge request descriptions as Triggers, and GitLab addresses |
 | `src/sources/gitlab-channel.ts` | The GitLab Channel: notes on an issue or merge request, `sent` or `gone` |
@@ -419,6 +424,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/gitlab.spec.ts` | The GitLab Source on a `SourceContext`: Trigger translation, project polling and cursors, note reads, replies and resources |
 | `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
+| `tests/wecom.spec.ts` | The WeCom Source: Trigger translation, the long connection's subscription, acks, callbacks and take-over, replies, and the conversation window assessments read |
 | `tests/feishu-read.spec.ts`, `tests/github-read.spec.ts` | Feishu and GitHub reads |
 | `tests/admission-context.spec.ts`, `tests/feishu-image.spec.ts` | The Thread window of assessments, and Feishu image reads |
 | `tests/assessment.spec.ts` | What the MasterAssessor keeps per Eval, and when it lets go |

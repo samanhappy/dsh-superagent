@@ -70,6 +70,14 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
    Both configurations share the keychain entry for the app secret. To remove only the bot configuration, delete its directory; do not run `lark-cli config remove`, which would affect the shared secret.
 
+### WeCom robot (optional)
+
+1. In the WeCom admin console, create an intelligent robot (智能机器人) for the team and note its **bot ID** and **secret**.
+2. Enable the `dsh-superagent-wecom` entry in the profile, as the Feishu entry is enabled.
+3. Save the bot ID and secret on the WeCom Source in the panel. A private deployment also sets the long-connection URL its admin console gives; leave it empty for `wss://openws.work.weixin.qq.com`.
+
+The Source opens one long connection per bot and reconnects with backoff. WeCom keeps a single connection for a bot, so a second dsh-superagent or another client subscribed with the same bot takes the connection over; the Source reports that as an error and stops. Setup only checks that both credentials are present: a wrong secret shows as the WeCom Source's health, not as a setup problem, because it is known only once the connection is attempted.
+
 ### Agent GitLab account (optional)
 
 1. Create a GitLab account for the agent and add it to every watched project as a Developer, which is the lowest role that may push branches.
@@ -122,7 +130,7 @@ Run the profile-creation command only for a new installation. If the profile alr
 
 ## Machine configuration
 
-Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for GitLab, the `dsh-superagent-gitlab` entry; for PingCode, the `dsh-superagent-pingcode` entry. The `webserver` entry sets the panel's port.
+Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for WeCom, the `dsh-superagent-wecom` entry; for GitLab, the `dsh-superagent-gitlab` entry; for PingCode, the `dsh-superagent-pingcode` entry. The `webserver` entry sets the panel's port.
 
 | Key | Required | Meaning |
 | --- | --- | --- |
@@ -251,7 +259,7 @@ curl -s -X PUT -H 'x-orchestrator-request: 1' -H 'content-type: application/json
 
 Setup uses the DeepSeek Harness subprocess service, as worker shells do. It removes environment variables whose names contain KEY, PASSWORD, SECRET or TOKEN.
 
-Setup verifies the GitHub repository and the agent's push access, writes the worker environment, and checks that git uses only the agent credentials for github.com. When the GitLab Source names a CLI, setup also verifies the account and its Developer access to every project, and checks the credentials for that instance. When the PingCode Source names a skill or a project, setup also verifies the skill directory, its `python3`, the user token through `/v1/myself`, and each project against `/v1/pjm/projects`. A Feishu, GitLab or PingCode setup failure disables only that Source.
+Setup verifies the GitHub repository and the agent's push access, writes the worker environment, and checks that git uses only the agent credentials for github.com. When the GitLab Source names a CLI, setup also verifies the account and its Developer access to every project, and checks the credentials for that instance. When the PingCode Source names a skill or a project, setup also verifies the skill directory, its `python3`, the user token through `/v1/myself`, and each project against `/v1/pjm/projects`. A Feishu, GitLab or PingCode setup failure disables only that Source. WeCom's credentials are checked for completeness only; the subscription itself is attempted by the Source, which reports a rejected bot as its health.
 
 The process environment that setup writes:
 

@@ -49,6 +49,12 @@ export const GithubAccountsSchema = z.object({
   cli: z.string().trim().default(''),
 })
 export const FeishuBotSchema = z.object({ cli: z.string().trim().default('') })
+/** The WeCom intelligent robot's identity: the bot id, its secret, and, for a private deployment, its long-connection URL. */
+export const WecomBotSchema = z.object({
+  botId: z.string().trim().max(128).default(''),
+  secret: z.string().trim().max(512).default(''),
+  wsUrl: z.string().trim().regex(/^(wss?:\/\/[^\s]+)?$/, 'ws:// or wss:// URL').default(''),
+})
 /** The GitLab instance, the agent's glab wrapper, and the projects the Source watches; all three are verified at setup. */
 export const GitlabAccountsSchema = z.object({
   host: z.string().trim().regex(/^[A-Za-z0-9.-]+(?::[0-9]+)?$/, 'host').default('gitlab.com'),
@@ -65,16 +71,19 @@ export const PingcodeAccountsSchema = z.object({
 })
 /** Source configuration keys that affect deployment setup and trigger a restart when changed. */
 export const SETUP_FIELDS: Readonly<Record<string, readonly string[]>> = { github: Object.keys(GithubAccountsSchema.shape), feishu: Object.keys(FeishuBotSchema.shape),
-  gitlab: Object.keys(GitlabAccountsSchema.shape), pingcode: Object.keys(PingcodeAccountsSchema.shape) }
+  wecom: Object.keys(WecomBotSchema.shape), gitlab: Object.keys(GitlabAccountsSchema.shape), pingcode: Object.keys(PingcodeAccountsSchema.shape) }
 
 export interface Deployment extends Machine {
   repository: string
   github: { cli: string; login: string; noreply: string }
   feishu?: FeishuBot
+  wecom?: WecomBot
   gitlab?: GitlabAccount
   pingcode?: PingcodeAccount
 }
 export interface FeishuBot { cli: string; appId: string; brand: 'feishu' | 'lark'; botId: string; name: string }
+/** The verified WeCom bot identity; `wsUrl` overrides the public long-connection address for a private deployment. */
+export interface WecomBot { botId: string; secret: string; wsUrl?: string }
 /** The verified GitLab account and its projects, canonical paths as GitLab reports them; `email` is the commit identity for workers. */
 export interface GitlabAccount { host: string; cli: string; login: string; id: number; email: string; projects: string[] }
 /** The PingCode account behind the skill's user token, the skill directory that holds its scripts, and the projects it watches. */
@@ -239,4 +248,15 @@ export async function resolveFeishuBot(machine: Machine, feishu: unknown, probe:
   const info = parsed(BotInfo, (await run('api', 'GET', '/open-apis/bot/v3/info', '--as', 'bot', '--format', 'ndjson')).split('\n')[0] ?? '')
   if (!info) return fail(new SetupError('feishuNoBot'))
   return { cli, appId: status.appId, brand: status.brand, botId: info.bot.open_id, name: info.bot.app_name }
+}
+
+/**
+ * Reads the WeCom bot identity the Source's long connection subscribes with. WeCom keeps one connection per bot, so setup
+ * checks that the credentials are complete; whether they work surfaces as the Source's health once it connects.
+ */
+export async function resolveWecomBot(wecom: unknown): Promise<WecomBot | undefined> {
+  const { botId, secret, wsUrl } = WecomBotSchema.parse(wecom ?? {})
+  if (!botId && !secret) return undefined
+  if (!botId || !secret) throw new SetupError('wecomUnset')
+  return { botId, secret, ...(wsUrl ? { wsUrl } : {}) }
 }

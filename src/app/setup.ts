@@ -1,7 +1,7 @@
 /** Probes repository and account CLIs, configures the worker execution environment and command shims, and tracks setup readiness. */
 import type { Context } from '@deepseek-ai/cordis'
 import { UserError } from '../core/index.ts'
-import { SETUP_FIELDS, resolveDeployment, resolveFeishuBot, resolveGitlabDeployment, resolvePingcodeDeployment, workerProbe, type Deployment, type Machine } from '../deployment.ts'
+import { SETUP_FIELDS, resolveDeployment, resolveFeishuBot, resolveGitlabDeployment, resolvePingcodeDeployment, resolveWecomBot, workerProbe, type Deployment, type Machine } from '../deployment.ts'
 import { agentVariables, applyEnvironment, verifyEnvironment, withoutDirectory, workerBin, writeEnvironment } from '../infra/environment.ts'
 import type { Settings, SettingsBlock } from '../policy.ts'
 import { SetupError, type SetupProblem } from '../setup.ts'
@@ -63,9 +63,10 @@ export class Setup {
   async checkAccounts(block: SettingsBlock, settings: Settings): Promise<void> {
     const { machine } = this.host
     const check = block === 'source:feishu' ? resolveFeishuBot(machine, settings.sources.feishu?.config, this.probe())
-      : block === 'source:gitlab' ? resolveGitlabDeployment(machine, settings.sources.gitlab?.config, this.probe())
-        : block === 'source:pingcode' ? resolvePingcodeDeployment(machine, settings.sources.pingcode?.config, this.probe())
-          : resolveDeployment(machine, settings.sources.github?.config, this.probe())
+      : block === 'source:wecom' ? resolveWecomBot(settings.sources.wecom?.config)
+        : block === 'source:gitlab' ? resolveGitlabDeployment(machine, settings.sources.gitlab?.config, this.probe())
+          : block === 'source:pingcode' ? resolvePingcodeDeployment(machine, settings.sources.pingcode?.config, this.probe())
+            : resolveDeployment(machine, settings.sources.github?.config, this.probe())
     await check.catch((error: unknown) => { if (!(error instanceof SetupError) || error.place === block.slice(7)) throw error })
   }
   async blockCommands(blocked: readonly string[]): Promise<void> {
@@ -87,6 +88,12 @@ export class Setup {
       context.logger.warn('dsh-superagent leaves Feishu out: %s', error.message)
       return undefined
     })
+    // WeCom differs only in transport: incomplete credentials pause that Source alone, and a rejected subscription shows in its health.
+    const wecom = await resolveWecomBot(settings.sources.wecom?.config).catch((error: unknown) => {
+      if (!(error instanceof SetupError)) throw error
+      context.logger.warn('dsh-superagent leaves WeCom out: %s', error.message)
+      return undefined
+    })
     // Like the Feishu bot, a broken GitLab account pauses only the GitLab Source; GitHub remains the deployment's foundation.
     const gitlab = await resolveGitlabDeployment(machine, settings.sources.gitlab?.config, probe).catch((error: unknown) => {
       if (!(error instanceof SetupError)) throw error
@@ -101,7 +108,7 @@ export class Setup {
       context.logger.warn('dsh-superagent leaves PingCode out: %s', error.message)
       return undefined
     })
-    const resolved = { ...deployment, ...(feishu ? { feishu } : {}), ...(gitlab ? { gitlab } : {}), ...(pingcode ? { pingcode } : {}) }
+    const resolved = { ...deployment, ...(feishu ? { feishu } : {}), ...(wecom ? { wecom } : {}), ...(gitlab ? { gitlab } : {}), ...(pingcode ? { pingcode } : {}) }
     const machineProblem = (error: unknown): never => {
       if (error instanceof SetupError) throw error
       throw new SetupError('environmentFailed', { output: error instanceof Error ? error.message : String(error) })

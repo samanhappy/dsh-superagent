@@ -16,6 +16,7 @@
     "./client": "./lib/client.js",
     "./github-watch": "./lib/github-watch.js",
     "./feishu-watch": "./lib/feishu-watch.js",
+    "./wecom-watch": "./lib/wecom-watch.js",
     "./gitlab-watch": "./lib/gitlab-watch.js",
     "./pingcode-watch": "./lib/pingcode-watch.js",
     "./package.json": "./package.json",
