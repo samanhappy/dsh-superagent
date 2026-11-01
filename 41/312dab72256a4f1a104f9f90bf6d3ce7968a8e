@@ -1,0 +1,19 @@
+src/sources/wecom-ws.ts
+  s_1cea7af971a5ce::t_fe0d4e88b9c4a5 6,36-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41312dab72256a4f1a104f9f90bf6d3ce7968a8e",
+  "prompts": {},
+  "sessions": {
+    "s_1cea7af971a5ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19272-376a-7e30-92ac-e1c251c0a785",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
