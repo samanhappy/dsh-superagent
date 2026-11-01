@@ -11,7 +11,7 @@ it('shows each Source\'s state on the Source status and opens its settings from 
   await mount()
   await click(zh['tab.source'])
   expect(document.querySelector('.dt-status-title')?.textContent).toBe(zh.statusTitle)
-  expect(all('.dt-form > .dt-list > .dt-row .dt-row-name').map(title => title.textContent)).toEqual(['飞书', 'GitHub'])
+  expect(all('.dt-form > .dt-list > .dt-row .dt-row-name').map(title => title.textContent)).toEqual(['飞书', 'GitHub', 'GitLab'])
   expect(all('.dt-form > .dt-list > .dt-row')[0]!.querySelector('.dt-row-meta')?.textContent).toBe('24 小时到达 12被过滤 2最近 ' + document.querySelector('.dt-row-meta time, .dt-row-meta .dt-lv:last-child .dt-lv-value')?.textContent)
   expect(text()).toContain(zh['sourceState.error'])
   expect(text()).toContain('socket closed')
@@ -64,7 +64,7 @@ it('renders each Source\'s settings from its kind\'s fields and saves one Source
   await click(zh['tab.source'])
   await click(find(zh['tab.settings'], '.dt-status-head button'))
   const cards = all('.dt-card')
-  expect(cards.map(card => card.querySelector('.dt-row-title')?.firstChild?.textContent)).toEqual(['飞书', 'GitHub'])
+  expect(cards.map(card => card.querySelector('.dt-row-title')?.firstChild?.textContent)).toEqual(['飞书', 'GitHub', 'GitLab'])
   const feishu = cards[0]!
   expect(feishu.textContent).toContain('接收的群')
   await click([...feishu.querySelectorAll('button')].find(button => button.textContent === '添加')!)
@@ -91,6 +91,49 @@ it('renders each Source\'s settings from its kind\'s fields and saves one Source
   await act(async () => { github.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) }); await settle()
   expect(server.settings.sources.github).toMatchObject({ enabled: false })
   expect(server.revisions['source:github']).toBe(6)
+})
+
+it('folds each Source card to its header and keeps its switch', async () => {
+  await mount()
+  await click(tab(zh['tab.settings']))
+  for (const card of all('.dt-card')) {
+    const toggle = card.querySelector<HTMLButtonElement>('.dt-card-toggle')
+    expect(toggle).not.toBeNull()
+    expect(toggle!.getAttribute('aria-expanded')).toBe('true')
+    const labels = () => [...card.querySelectorAll('label')].map(label => label.textContent)
+    const fields = labels()
+    expect(fields.length).toBeGreaterThan(0)
+    await click(toggle!)
+    expect(toggle!.getAttribute('aria-expanded')).toBe('false')
+    expect(labels()).toEqual([])
+    expect(card.querySelector('[role="switch"]')).not.toBeNull()
+    await click(toggle!)
+    expect(labels()).toEqual(fields)
+  }
+})
+
+it('keeps a setup problem on a folded Source card', async () => {
+  server.setup = { ...server.setup, problem: problemOf('agentCliUnset') }
+  await mount()
+  await click(tab(zh['tab.settings']))
+  const github = all('.dt-card')[1]!
+  const toggle = github.querySelector<HTMLButtonElement>('.dt-card-toggle')
+  expect(toggle).not.toBeNull()
+  await click(toggle!)
+  expect(toggle!.getAttribute('aria-expanded')).toBe('false')
+  expect(github.textContent).toContain(zh['setup.agentCliUnset'])
+})
+
+it('keeps unsaved Source edits reachable after folding the card', async () => {
+  await mount()
+  await click(tab(zh['tab.settings']))
+  const github = all('.dt-card')[1]!
+  await type(field<HTMLInputElement>('监听的仓库'), 'acme/other')
+  const toggle = github.querySelector<HTMLButtonElement>('.dt-card-toggle')
+  expect(toggle).not.toBeNull()
+  await click(toggle!)
+  expect(github.textContent).not.toContain('监听的仓库')
+  expect(github.querySelector('.dt-savebar')?.textContent).toContain(zh.discard)
 })
 
 it('shows the account each CLI signs in as, and keeps a saved CLI on screen while dsh-superagent restarts', async () => {
@@ -149,7 +192,7 @@ it('points a setup problem at the settings that fix it', async () => {
   await click(zh['tab.overview'])
   await click(find(zh.problemSetup, 'button, a, [role="button"]'))
   expect(document.querySelector('.dt-settings-link[aria-current="page"]')?.textContent).toBe(zh['settingsGroup.deployment'])
-  expect(text()).toContain('部署检查未通过：git 没有读取 dsh-superagent 为 github.com 写的凭据配置')
+  expect(text()).toContain('部署检查未通过：git 没有读取 dsh-superagent 为 github.com 或 GitLab 实例写的凭据配置')
 })
 
 it('shows a failed Feishu bot check as a problem of the Feishu Source only, with a check after a fix outside dsh-superagent', async () => {
@@ -188,7 +231,7 @@ it('shows the Sources waiting for the deployment check, and the problem on the S
   await click(zh['tab.source'])
   const rows = all('.dt-form > .dt-list > .dt-row')
   // The GitHub Source is where the problem is fixed, so it shows the error; Feishu waits.
-  expect(rows.map(row => row.querySelector('.dt-status-text')?.textContent)).toEqual(['等待部署检查', '出错'])
+  expect(rows.map(row => row.querySelector('.dt-status-text')?.textContent)).toEqual(['等待部署检查', '出错', '等待部署检查'])
   expect(text()).not.toContain('Waiting for setup')
   expect(rows[1]!.textContent).toContain('部署检查未通过：GitHub 来源没有设置监听的仓库。')
   await click(find(zh.sourceOpenSettings, '.dt-row button'))

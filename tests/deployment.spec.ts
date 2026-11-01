@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Config, executable, machineOf, resolveDeployment, resolveFeishuBot, type Machine, type Probe } from '../src/deployment.ts'
+import { Config, executable, machineOf, resolveDeployment, resolveFeishuBot, resolveGitlabDeployment, type Machine, type Probe } from '../src/deployment.ts'
 import { gitEnv } from './fixtures/git.ts'
 
 const exec = promisify(execFile)
@@ -16,6 +16,14 @@ const gh = (file: string, login: string, push = true): string => program(file, `
 /** Fake lark-cli script body returning canned auth, strict-mode, and bot info responses. */
 const lark = (status: object, mode = 'bot', bot: object = { bot: { open_id: 'ou_bot', app_name: 'Widgets Bot' }, code: 0 }): string =>
   `case "$*" in\n  "auth status") echo '${JSON.stringify(status)}' ;;\n  "config strict-mode") echo 'strict-mode: ${mode} (source: profile)' ;;\n  "api GET /open-apis/bot/v3/info --as bot --format ndjson") echo '${JSON.stringify(bot)}' ;;\nesac`
+/** Fake glab CLI signed in as `login`, a Developer of acme/widgets unless told otherwise; paths are what `glab api` receives. */
+const glab = (file: string, options: { login?: string; level?: number; project?: string; userFails?: boolean; projectFails?: boolean } = {}): string => {
+  const { login = 'agent-bot', level = 30, project = 'acme/widgets', userFails = false, projectFails = false } = options
+  const user = userFails ? 'echo "Unauthenticated" >&2; exit 1' : `echo '${JSON.stringify({ id: 7, username: login, email: 'agent@example.com' })}'`
+  const found = projectFails ? 'echo "404 Not Found" >&2; exit 1'
+    : `echo '${JSON.stringify({ path_with_namespace: project, permissions: { project_access: { access_level: level }, group_access: null } })}'`
+  return program(file, `case "$*" in\n  "--hostname gitlab.com api user") ${user} ;;\n  "--hostname gitlab.com api projects/acme%2Fwidgets") ${found} ;;\n  *) exit 1 ;;\nesac`)
+}
 const minimal = (overrides: Record<string, unknown> = {}) => ({ stateDir: join(dir, 'state'), ...overrides })
 const machine = (overrides: Partial<Machine> = {}): Machine => ({ ...machineOf(Config(minimal())), ...overrides })
 /** Runs commands like worker shells do, but locally: the stand-ins first on PATH, then the system's git. */
@@ -82,6 +90,26 @@ describe('setup', () => {
     await needs('github', 'repositoryUnreadable', { account: 'Agent-Bot', repository: 'acme/widgets', output }, { repository, cli: unreadable })
     await needs('github', 'agentCliNoAccount', {}, { repository, cli: program(join(dir, 'bin', 'gh-anonymous'), `echo '{}'`) })
     expect(() => executable('nothing-here', join(dir, 'bin'))).toThrow('nothing-here is not an executable file on PATH')
+  })
+  it('verifies the agent\'s glab account and Developer access to every GitLab project, or leaves GitLab out', async () => {
+    expect(await resolveGitlabDeployment(machine(), {}, probe, path)).toBeUndefined()
+    const file = glab(join(dir, 'bin', 'glab'))
+    const config = (overrides: Record<string, unknown> = {}) => ({ host: 'gitlab.com', cli: 'glab', projects: [{ path: 'acme/widgets' }], ...overrides })
+    expect(await resolveGitlabDeployment(machine(), config(), probe, path)).toEqual({ host: 'gitlab.com', cli: file, login: 'agent-bot', id: 7,
+      email: 'agent@example.com', projects: ['acme/widgets'] })
+    // A renamed project resolves by its old name and polls the canonical one.
+    const renamed = glab(join(dir, 'bin', 'glab-renamed'), { project: 'acme/widgets-renamed' })
+    expect((await resolveGitlabDeployment(machine(), config({ cli: renamed }), probe, path))!.projects).toEqual(['acme/widgets-renamed'])
+    const refuses = async (code: string, values: Record<string, unknown>, gitlab: Record<string, unknown>) =>
+      expect(resolveGitlabDeployment(machine(), config(gitlab), probe, path)).rejects.toEqual(setupError('gitlab', code, values))
+    await refuses('gitlabProjectUnset', {}, { projects: [] })
+    await refuses('gitlabCliMissing', { output: expect.stringContaining('is not an executable file') }, { cli: join(dir, 'bin', 'missing') })
+    const reader = glab(join(dir, 'bin', 'glab-reader'), { level: 20 })
+    await refuses('gitlabProjectReadOnly', { account: 'agent-bot', project: 'acme/widgets' }, { cli: reader })
+    const outsider = glab(join(dir, 'bin', 'glab-outsider'), { projectFails: true })
+    await refuses('gitlabProjectUnreadable', { account: 'agent-bot', project: 'acme/widgets', output: expect.stringContaining('404') }, { cli: outsider })
+    const anonymous = glab(join(dir, 'bin', 'glab-anonymous'), { userFails: true })
+    await refuses('gitlabCliSignedOut', { output: expect.stringContaining('Unauthenticated') }, { cli: anonymous })
   })
   it('reads the Feishu bot from a bot-only lark-cli, or finds none when the Feishu Source names no CLI', async () => {
     expect(await resolveFeishuBot(machine(), {}, probe, path)).toBeUndefined()

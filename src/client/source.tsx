@@ -11,11 +11,15 @@ import { ConfigHistory, Fields, SourceField, useBlockDraft, useSettings } from '
 import { actorName, healthText, localized, readableMarkers, reasonLabel, valueLabel, when } from './text.ts'
 import { CheckSetupButton, Hint, LabelValue, LoadState, SetupMessage, StatusHead, When } from './widgets.tsx'
 
-function SourceCard({ source }: { source: SourceView }) {
+function SourceCard({ source, focus }: { source: SourceView; focus?: boolean }) {
   const { t, call } = usePanel()
   const { running } = usePanelData()
   const { reload } = useSettings()
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [open, setOpen] = useState(true)
+  const bodyId = `dt-source-${source.id}-body`
+  // A link that points at this card opens it, so the setting it needs is on screen.
+  useEffect(() => { if (focus) setOpen(true) }, [focus])
   const refreshLabels = async () => { const { added } = await call('POST sources/:id/labels',
     { id: source.id }); await reload(); return added }
   const draft = useBlockDraft(`source:${source.id}`, source.value, source.revision)
@@ -36,7 +40,12 @@ function SourceCard({ source }: { source: SourceView }) {
       <div className="dt-card-head">
         <div className="dt-row-main">
           <div className="dt-row-title">
-            <span className="dt-card-title">{localized(t, source.title)}</span>{description && <InfoTip text={description} />}
+            <button type="button" className="dt-card-toggle" aria-expanded={open} aria-controls={open ? bodyId : undefined}
+              onClick={() => setOpen(!open)}>
+              <span className="dt-card-toggle-icon"><Icon name={open ? 'chevron-down' : 'chevron-right'} /></span>
+              <span className="dt-card-title">{localized(t, source.title)}</span>
+            </button>
+            {description && <InfoTip text={description} />}
             {!source.installed && <Tag tone="warning">{t('sourceNotInstalled')}</Tag>}
           </div>
         </div>
@@ -46,12 +55,14 @@ function SourceCard({ source }: { source: SourceView }) {
       {problem && <div className="dt-row-buttons">
         <p className="dt-error" role="status"><SetupMessage problem={problem} lead /></p><CheckSetupButton />
       </div>}
-      {!source.installed && <Hint>{t('sourceNotInstalledHint')}</Hint>}
-      {source.installed && source.fields.filter(spec => !spec.advanced).map(field)}
-      {source.installed && advanced.length > 0 && <DisclosureRow icon={<Icon name="settings" />} title={t('advanced')} open={advancedOpen}
-        onToggle={() => setAdvancedOpen(!advancedOpen)}>
-        <div className="dt-disclosure-body">{advanced.map(field)}</div>
-      </DisclosureRow>}
+      {open && <div id={bodyId} className="dt-card-body">
+        {!source.installed && <Hint>{t('sourceNotInstalledHint')}</Hint>}
+        {source.installed && source.fields.filter(spec => !spec.advanced).map(field)}
+        {source.installed && advanced.length > 0 && <DisclosureRow icon={<Icon name="settings" />} title={t('advanced')}
+          open={advancedOpen} onToggle={() => setAdvancedOpen(!advancedOpen)}>
+          <div className="dt-disclosure-body">{advanced.map(field)}</div>
+        </DisclosureRow>}
+      </div>}
     </Fields>
     <SaveBar {...draft} status={restarts && running > 0 ? t('restartInterrupts', { count: running }) : undefined}
       onDiscard={draft.discard} />
@@ -62,7 +73,7 @@ export function SourceSettings({ focus }: { focus?: string }) {
   const { sources } = useSettings().settings
   useEffect(() => { if (focus) document.getElementById(`dt-source-${focus}`)?.scrollIntoView?.({ block: 'start' }) }, [focus])
   return <div className="dt-form">
-    {sources.map(source => <SourceCard key={source.id} source={source} />)}
+    {sources.map(source => <SourceCard key={source.id} source={source} focus={source.id === focus} />)}
     <ConfigHistory blocks={['source:']} />
   </div>
 }

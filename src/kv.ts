@@ -55,4 +55,9 @@ export const KV = {
   feishu: { chats: record<Record<string, boolean>>('feishu-chats'), history: family<string, [chat: string]>('feishu-history:'),
     topics: family<Record<string, string>, [chat: string]>('feishu-history-threads:'),
     seen: family<string[], [thread: string]>('thread-seen:'), initialized: family<boolean, [thread: string]>('thread-initialized:') },
+  /**
+   * GitLab Source: the per-project cursor of the issues and merge requests read in full, and the per-subscribed-thread cursor
+   * shared by the stream and thread reads (deterministic Trigger IDs deduplicate the overlap).
+   */
+  gitlab: { since: family<string, [project: string]>('gitlab-since:'), thread: family<string, [thread: string]>('gitlab-thread:') },
 }

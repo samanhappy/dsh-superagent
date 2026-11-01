@@ -9,6 +9,8 @@ import type { Commands } from '../infra/commands.ts'
 import type { Deployment } from '../deployment.ts'
 import { admissionContext } from '../sources/admission-context.ts'
 import { readRepositoryPath } from '../sources/github-read.ts'
+import { readGitlabPath } from '../sources/gitlab-read.ts'
+import { gitlabRef } from '../sources/gitlab-trigger.ts'
 import type { TriggerContext } from '../sources/kind.ts'
 import { relatedTickets } from './cards.ts'
 import { textPage } from './context.ts'
@@ -262,8 +264,14 @@ export class MasterAssessor implements Assessor {
         const next = result.next ? { trigger_id: trigger.id, resource: 'thread', cursor: result.next } : null
         body = JSON.stringify({ images: references, next_read: next, ...result.body })
       }
-      else {
+      else if (trigger.source === 'github') {
         body = await readRepositoryPath(commands, read.path!, read.resource === 'directory' ? 'directory' : 'file')
+      }
+      else {
+        // A GitLab Trigger reads its own project's default branch, so an assessment sees the code it is asked about.
+        const ref = gitlabRef(trigger)
+        if (!ref) throw new Error('This Source has no repository file reads')
+        body = await readGitlabPath(commands, ref.project, read.path!, read.resource === 'directory' ? 'directory' : 'file')
       }
       snapshots.set(cacheKey, body)
       return textPage(read.resource, body, read.offset, 4000)

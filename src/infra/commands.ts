@@ -4,6 +4,7 @@ import { basename } from 'node:path'
 import { promisify } from 'node:util'
 import { z } from 'zod'
 import type { Deployment } from '../deployment.ts'
+import { sameName } from './text.ts'
 
 const exec = promisify(execFile)
 const TIMEOUT_MS = 90_000
@@ -95,6 +96,34 @@ export class Commands {
     const outside = /^\/|^[a-z]+:|(^|\/)\.\.?(\/|\?|$)/i.test(path)
     if (outside) throw new Error('GitHub calls are restricted to the configured repository')
     return path ? `repos/${this.repository}/${path}` : `repos/${this.repository}`
+  }
+  /** The verified GitLab account; throws while the Source has no working CLI. */
+  private get gitlab(): NonNullable<Deployment['gitlab']> {
+    const gitlab = this.deployment.gitlab
+    if (!gitlab) throw new Error('The GitLab Source has no working CLI')
+    return gitlab
+  }
+  /** Runs the agent's `glab` against the deployment's instance and parses its JSON output. */
+  async glab<T>(args: string[]): Promise<T> { return JSON.parse(await this.run(this.gitlab.cli, ['--hostname', this.gitlab.host, ...args])) as T }
+  /**
+   * Calls the GitLab API on a path within one configured project, validating JSON output when a schema is provided
+   * or returning raw CLI output when omitted.
+   * @throws CliError with GitLab's HTTP status as `code` on failure.
+   */
+  async gitlabApi<T>(schema: z.ZodType<T>, project: string, path: string, ...flags: string[]): Promise<T>
+  async gitlabApi(project: string, path: string, ...flags: string[]): Promise<string>
+  async gitlabApi<T>(schema: z.ZodType<T> | string, project: string, path = '', ...flags: string[]): Promise<T | string> {
+    // The raw overload passes the project where a schema would be, the path where the project would be, and its first flag as `path`.
+    if (typeof schema === 'string') {
+      return this.run(this.gitlab.cli, ['--hostname', this.gitlab.host, 'api', this.projectPath(schema, project), ...(path ? [path] : []), ...flags])
+    }
+    return schema.parse(await this.glab(['api', this.projectPath(project, path), ...flags]))
+  }
+  private projectPath(project: string, path: string): string {
+    const configured = this.deployment.gitlab?.projects ?? []
+    const outside = /^\/|^[a-z]+:|(^|\/)\.\.?(\/|\?|$)/i.test(path)
+    if (!configured.some(item => sameName(item, project)) || outside) throw new Error('GitLab calls are restricted to the configured projects')
+    return `projects/${encodeURIComponent(project)}${path ? `/${path}` : ''}`
   }
   /**
    * Runs the Feishu bot's `lark-cli` and returns the JSON `data` payload.
