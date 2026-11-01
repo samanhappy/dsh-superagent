@@ -127,7 +127,8 @@ function healthOf(name: string): Health {
   return server.setup.feishuProblem ? { state: 'paused', detail: server.setup.feishuProblem.detail } : { state: 'error',
     detail: 'socket closed' }
 }
-const problemOf_ = (id: string) => [server.setup.problem, server.setup.feishuProblem, server.setup.gitlabProblem].find(item => item?.place === id) ?? undefined
+const problemOf_ = (id: string) => [server.setup.problem, server.setup.feishuProblem, server.setup.gitlabProblem,
+  server.setup.pingcodeProblem].find(item => item?.place === id) ?? undefined
 function sourceSettings(): SourceView[] {
   return KINDS.map(kind => {
     const config = kind.schema.parse(server.settings.sources[kind.kind]?.config ?? {})
@@ -251,9 +252,9 @@ function initial(): PanelServer {
   const defaults = { revision: 0, previousRevision: null, savedAt: '', source: 'defaults' }
   return {
     health: {}, down: false, pending: 0, opened: [], requests: [], misuse: [], queued: new Set(), dropped: [], failing: [],
-    setup: { machine: MACHINE, problem: null, feishuProblem: null, gitlabProblem: null,
+    setup: { machine: MACHINE, problem: null, feishuProblem: null, gitlabProblem: null, pingcodeProblem: null,
       accounts: { repository: 'acme/widgets', agent: 'agent-bot', feishu: { appId: 'cli_bot', brand: 'feishu', botId: 'ou_bot',
-        name: 'Widgets Bot' }, gitlab: { host: 'gitlab.com', login: 'agent-bot' } } },
+        name: 'Widgets Bot' }, gitlab: { host: 'gitlab.com', login: 'agent-bot' }, pingcode: null } },
     settings, revisions: { policy: 3, eval: 1, executor: 0 },
     prompts: { masterId: 'master', sections: TEAM_SECTIONS, skillName: SKILL_NAME.source, builtin: ['feishu', 'github', 'gitlab'],
       skillPrefix: SKILL_PREFIX, revision: 0, current: { ...defaults, config: defaultPrompts() },

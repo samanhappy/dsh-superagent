@@ -1,6 +1,7 @@
 /** Plugin configuration and startup verification for repository access and agent CLI identities. */
 import { LIMITS } from './limits.ts'
-import { accessSync, constants, statSync } from 'node:fs'
+import { accessSync, constants, readFileSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { delimiter, isAbsolute, join } from 'node:path'
 import type { Volatile } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
@@ -8,6 +9,7 @@ import { z } from 'zod'
 import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import { runAsWorker, sameDirectory, withoutDirectory, workerBin } from './infra/environment.ts'
 import { SetupError } from './setup.ts'
+import { sameName } from './infra/text.ts'
 
 const reason = (error: unknown): string => error instanceof Error ? error.message : String(error)
 const absolute = (description: string) => s.string().pattern(/^\//).description(`${description} Absolute path.`)
@@ -54,19 +56,31 @@ export const GitlabAccountsSchema = z.object({
   projects: z.array(z.object({ path: z.string().trim().regex(/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/, 'group/project') }).strict())
     .refine(projects => new Set(projects.map(project => project.path)).size === projects.length, 'Duplicate project paths').default([]),
 })
+/** The PingCode skill directory (blank auto-detects the usual install locations), its `python3`, and the projects the Source watches. */
+export const PingcodeAccountsSchema = z.object({
+  skill: z.string().trim().default(''),
+  python: z.string().trim().default('python3'),
+  projects: z.array(z.object({ project: z.string().trim().min(1).max(64) }).strict())
+    .refine(projects => new Set(projects.map(item => item.project.toLowerCase())).size === projects.length, 'Duplicate projects').default([]),
+})
 /** Source configuration keys that affect deployment setup and trigger a restart when changed. */
 export const SETUP_FIELDS: Readonly<Record<string, readonly string[]>> = { github: Object.keys(GithubAccountsSchema.shape), feishu: Object.keys(FeishuBotSchema.shape),
-  gitlab: Object.keys(GitlabAccountsSchema.shape) }
+  gitlab: Object.keys(GitlabAccountsSchema.shape), pingcode: Object.keys(PingcodeAccountsSchema.shape) }
 
 export interface Deployment extends Machine {
   repository: string
   github: { cli: string; login: string; noreply: string }
   feishu?: FeishuBot
   gitlab?: GitlabAccount
+  pingcode?: PingcodeAccount
 }
 export interface FeishuBot { cli: string; appId: string; brand: 'feishu' | 'lark'; botId: string; name: string }
 /** The verified GitLab account and its projects, canonical paths as GitLab reports them; `email` is the commit identity for workers. */
 export interface GitlabAccount { host: string; cli: string; login: string; id: number; email: string; projects: string[] }
+/** The PingCode account behind the skill's user token, the skill directory that holds its scripts, and the projects it watches. */
+export interface PingcodeAccount { skill: string; python: string; login: string; id: string; displayName: string; projects: PingcodeProject[] }
+/** One watched PingCode project, named the way the API reports it. */
+export interface PingcodeProject { id: string; identifier: string; name: string }
 
 /** Resolve a command name or absolute path to an executable file, ignoring the worker shim directory. */
 export function executable(name: string, path: string, exclude?: string): string {
@@ -151,6 +165,55 @@ export async function resolveGitlabDeployment(machine: Machine, gitlab: unknown,
   // A verified account without an email address commits as GitLab's no-reply address for its numeric ID and username.
   const domain = host.replace(/:\d+$/, '')
   return { host, cli, login: agent.username, id: agent.id, email: agent.email || `${agent.id}-${agent.username}@users.noreply.${domain}`, projects: [...new Set(canonical)] }
+}
+
+/** Conventional PingCode skill install locations; a candidate holds its scripts/api_call.py. */
+export function defaultSkillDirs(): string[] {
+  let home = ''
+  try { home = homedir() } catch { /* Without a home directory only an explicit skill directory can work. */ }
+  return home ? [join(home, '.agents', 'skills', 'pingcode'), join(home, '.workbuddy', 'skills', 'pingcode')] : []
+}
+/** The API-calling script inside a skill directory, whose `.env` holds the credentials. */
+export const skillScript = (dir: string): string => join(dir, 'scripts', 'api_call.py')
+/** Resolves the configured skill directory, or the first auto-detected one that holds the script. */
+export function resolveSkillDir(configured: string): string | undefined {
+  const holds = (dir: string): boolean => { try { readFileSync(skillScript(dir)); return true } catch { return false } }
+  return configured ? holds(configured) ? configured : undefined : defaultSkillDirs().find(holds)
+}
+
+const PingcodeUser = z.object({ id: z.string(), name: z.string().nullish(), display_name: z.string().nullish() })
+const PingcodeProjects = z.object({ values: z.array(z.looseObject({ id: z.string(), identifier: z.string().nullish(), name: z.string().nullish() })).default([]) })
+/**
+ * Verify the PingCode skill directory, its python3, the user token in the skill's `.env`, and every configured project.
+ * Returns undefined while the Source names neither a skill nor a project, so a PingCode-less installation keeps working.
+ */
+export async function resolvePingcodeDeployment(machine: Machine, pingcode: unknown, probe: Probe, path = process.env.PATH ?? ''): Promise<PingcodeAccount | undefined> {
+  const { skill, python, projects } = PingcodeAccountsSchema.parse(pingcode ?? {})
+  if (!projects.length && !skill) return undefined
+  if (!projects.length) throw new SetupError('pingcodeProjectUnset')
+  const dir = resolveSkillDir(skill)
+  if (!dir) throw new SetupError('pingcodeSkillMissing', { skill: skill || defaultSkillDirs().join('、') })
+  let bin: string
+  try { bin = executable(python, path, workerBin(machine.stateDir)) } catch (error) { throw new SetupError('pingcodePythonMissing', { output: reason(error) }) }
+  // Without `--raw` the script prints the API's error on stderr as `⚠️ HTTP <status>`, which tells a rejected token apart from
+  // an unreachable instance; both failures print the same `{code, message}` body on stdout.
+  const run = (args: string[]): Promise<string> => probe([bin, skillScript(dir), ...args]).catch((error: unknown) => {
+    const text = reason(error)
+    if (/HTTP 401|access_token|100026|Unauthorized|令牌|授权/.test(text)) throw new SetupError('pingcodeTokenInvalid', { output: text })
+    throw new SetupError('pingcodeCliFailed', { output: text })
+  })
+  const me = parsed(PingcodeUser, await run(['GET', '/v1/myself']))
+  if (!me) throw new SetupError('pingcodeNoAccount')
+  const listing = parsed(PingcodeProjects, await run(['GET', '/v1/pjm/projects', '--fetch-all']))
+  const all = listing?.values ?? []
+  // A project may be named by ID, identifier or name; the API's own names are what cursors and URLs use afterwards.
+  const canonical: PingcodeProject[] = []
+  for (const { project } of projects) {
+    const found = all.find(item => item.id === project || sameName(item.identifier ?? '', project) || sameName(item.name ?? '', project))
+    if (!found) throw new SetupError('pingcodeProjectUnreadable', { project })
+    if (!canonical.some(item => item.id === found.id)) canonical.push({ id: found.id, identifier: found.identifier ?? '', name: found.name ?? '' })
+  }
+  return { skill: dir, python: bin, login: me.name || me.id, id: me.id, displayName: me.display_name || me.name || '', projects: canonical }
 }
 
 const AuthStatus = z.object({ appId: z.string().regex(/^cli_[A-Za-z0-9]+$/), brand: z.enum(['feishu', 'lark']).default('feishu'), identities: z.object({ bot: z.object({ status: z.string() }) }) })

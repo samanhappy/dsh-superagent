@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Config, executable, machineOf, resolveDeployment, resolveFeishuBot, resolveGitlabDeployment, type Machine, type Probe } from '../src/deployment.ts'
+import { Config, executable, machineOf, resolveDeployment, resolveFeishuBot, resolveGitlabDeployment, resolvePingcodeDeployment, type Machine, type Probe } from '../src/deployment.ts'
 import { gitEnv } from './fixtures/git.ts'
 
 const exec = promisify(execFile)
@@ -110,6 +110,31 @@ describe('setup', () => {
     await refuses('gitlabProjectUnreadable', { account: 'agent-bot', project: 'acme/widgets', output: expect.stringContaining('404') }, { cli: outsider })
     const anonymous = glab(join(dir, 'bin', 'glab-anonymous'), { userFails: true })
     await refuses('gitlabCliSignedOut', { output: expect.stringContaining('Unauthenticated') }, { cli: anonymous })
+  })
+  it('verifies the PingCode skill, its python and user token, and resolves each project by ID, identifier or name', async () => {
+    const skills = (name: string, options: { tokenInvalid?: boolean; user?: object } = {}): string => {
+      const folder = join(dir, name)
+      mkdirSync(join(folder, 'scripts'), { recursive: true })
+      const user = JSON.stringify(options.user ?? { id: 'u-1', name: 'agent-bot', display_name: 'Agent Bot' })
+      const projects = JSON.stringify({ values: [{ id: 'p-1', identifier: 'SCR', name: 'Scrum' }, { id: 'p-2', identifier: 'OPS', name: 'Ops' }] })
+      // The real skill prints the API's error on stdout and `⚠️ HTTP <status>` on stderr, then exits 1.
+      writeFileSync(join(folder, 'scripts', 'api_call.py'), options.tokenInvalid
+        ? `echo '{"code":"100026","message":"access_token无效"}'\necho '⚠️ HTTP 401' >&2\nexit 1`
+        : `case "$*" in\n  "GET /v1/myself") echo '${user}' ;;\n  "GET /v1/pjm/projects --fetch-all") echo '${projects}' ;;\n  *) exit 1 ;;\nesac`)
+      return folder
+    }
+    const good = skills('pingcode')
+    const config = (overrides: Record<string, unknown> = {}) => ({ skill: good, python: '/bin/sh', projects: [{ project: 'SCR' }, { project: 'ops' }], ...overrides })
+    expect(await resolvePingcodeDeployment(machine(), {}, probe, path)).toBeUndefined()
+    expect(await resolvePingcodeDeployment(machine(), config(), probe, path)).toEqual({ skill: good, python: '/bin/sh', login: 'agent-bot',
+      id: 'u-1', displayName: 'Agent Bot', projects: [{ id: 'p-1', identifier: 'SCR', name: 'Scrum' }, { id: 'p-2', identifier: 'OPS', name: 'Ops' }] })
+    const refuses = async (code: string, values: Record<string, unknown>, pingcode: Record<string, unknown>) =>
+      expect(resolvePingcodeDeployment(machine(), config(pingcode), probe, path)).rejects.toEqual(setupError('pingcode', code, values))
+    await refuses('pingcodeProjectUnset', {}, { projects: [] })
+    await refuses('pingcodeSkillMissing', {}, { skill: join(dir, 'nothing') })
+    await refuses('pingcodePythonMissing', { output: expect.stringContaining('is not an executable file') }, { python: 'python-that-is-not-installed' })
+    await refuses('pingcodeTokenInvalid', { output: expect.stringContaining('HTTP 401') }, { skill: skills('pingcode-invalid', { tokenInvalid: true }) })
+    await refuses('pingcodeProjectUnreadable', { project: 'missing' }, { projects: [{ project: 'missing' }] })
   })
   it('reads the Feishu bot from a bot-only lark-cli, or finds none when the Feishu Source names no CLI', async () => {
     expect(await resolveFeishuBot(machine(), {}, probe, path)).toBeUndefined()

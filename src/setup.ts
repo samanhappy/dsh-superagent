@@ -1,7 +1,7 @@
 /** Structured startup and configuration errors with the settings location where the operator can fix them. */
 import { fill } from './infra/text.ts'
 
-export type SetupPlace = 'deployment' | 'github' | 'feishu' | 'gitlab'
+export type SetupPlace = 'deployment' | 'github' | 'feishu' | 'gitlab' | 'pingcode'
 export const SETUP_PROBLEMS = {
   foreignFile: ['deployment', '{file} was not written by dsh-superagent; move it, or choose another state directory.'],
   gitTooOld: ['deployment', 'git does not read the credential configuration dsh-superagent writes for github.com or the GitLab instance; dsh-superagent needs git 2.32 or later.'],
@@ -26,6 +26,13 @@ export const SETUP_PROBLEMS = {
   gitlabCliNoAccount: ['gitlab', 'The agent GitLab CLI did not report a GitLab account.'],
   gitlabProjectUnreadable: ['gitlab', '@{account} cannot read {project}.'],
   gitlabProjectReadOnly: ['gitlab', '@{account} is not a Developer of {project}, so the agent cannot push there.'],
+  pingcodeProjectUnset: ['pingcode', 'The PingCode Source names no project.'],
+  pingcodeSkillMissing: ['pingcode', 'No PingCode skill directory was found (it must hold scripts/api_call.py and .env): {skill}.'],
+  pingcodePythonMissing: ['pingcode', 'The python3 the PingCode skill runs on was not found.'],
+  pingcodeCliFailed: ['pingcode', 'The PingCode skill could not call the API.'],
+  pingcodeTokenInvalid: ['pingcode', 'The PingCode user token is missing, expired or invalid; run scripts/auth_user.py in the skill directory to authorize again.'],
+  pingcodeNoAccount: ['pingcode', 'The PingCode API did not report the account of the user token.'],
+  pingcodeProjectUnreadable: ['pingcode', 'The project {project} was not found; name it by project ID, identifier or name.'],
 } as const satisfies Record<string, readonly [SetupPlace, string]>
 export type SetupCode = keyof typeof SETUP_PROBLEMS
 export interface SetupProblem { place: SetupPlace; code: SetupCode; values: Record<string, string>; detail: string }

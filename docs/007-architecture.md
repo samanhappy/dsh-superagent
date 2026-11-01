@@ -249,7 +249,7 @@ Each model request binds the Session to the current prompt revision. The revisio
 | `src/app/tools/main.ts`, `src/app/tools/executor.ts` | Tool arguments of the main Session and the Executor Sessions into calls of the core classes, and their results into cards |
 | `src/app/http.ts`, `src/app/views/`, `src/app/api.ts` | HTTP requests into calls, and Store reads into the panel's views; `api.ts` types every route for the panel |
 | `src/app/resources.ts`, `src/app/links.ts`, `src/app/cards.ts` | Resource names into reads, source messages into links, records into compact cards for models |
-| `src/sources/github*.ts`, `src/sources/feishu*.ts`, `src/sources/gitlab*.ts`, `src/sources/poll.ts` | GitHub, Feishu and GitLab payloads into Triggers and Thread facts, and messages into CLI calls |
+| `src/sources/github*.ts`, `src/sources/feishu*.ts`, `src/sources/gitlab*.ts`, `src/sources/pingcode*.ts`, `src/sources/poll.ts` | GitHub, Feishu, GitLab and PingCode payloads into Triggers and Thread facts, and messages into CLI and skill calls |
 | `src/deployment.ts`, `src/setup.ts`, `src/infra/` | Setup probes and problems, CLI transport, the agent's process environment |
 
 ## Dependency rules
@@ -282,8 +282,8 @@ Some generic modules still refer directly to GitHub or Feishu:
 - Runtime sends `pullEndNotices` for merged or closed Tickets.
 - Executor tools bind reported pull requests with `readPull` and `claimPull`, using the GitHub context exposed by Runtime.
 - MasterAssessor reads repository files with `readRepositoryPath`.
-- Sessions and Prompts register built-in skills only for GitHub, GitLab and Feishu. Migration converts their schema-10 records.
-- Setup probes only GitHub, GitLab and Feishu account fields (`SETUP_FIELDS`). Only those Sources receive account setup problems through `SourceContext.problem`.
+- Sessions and Prompts register built-in skills only for GitHub, GitLab, Feishu and PingCode. Migration converts their schema-10 records.
+- Setup probes only GitHub, GitLab, Feishu and PingCode account fields (`SETUP_FIELDS`). Only those Sources receive account setup problems through `SourceContext.problem`.
 
 
 ## Modules
@@ -361,7 +361,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/kind.ts` | The `SourceKind` protocol |
 | `src/sources/registry.ts` | `SourceRegistry` |
 | `src/sources/host.ts` | `SourceHost`, `SourceContext`, `Health`, `health` and the fixed health texts |
-| `src/sources/poll.ts` | What GitHub, GitLab and Feishu polling share: `POLL_HORIZON_MS`, `polled`, `cursorAt`, and `pollThreads`, which keeps a failure on its Thread as `pollError` |
+| `src/sources/poll.ts` | What GitHub, GitLab, Feishu and PingCode polling share: `POLL_HORIZON_MS`, `polled`, `cursorAt`, and `pollThreads`, which keeps a failure on its Thread as `pollError` |
 | `src/sources/github.ts` | The GitHub kind and plugin entry, exported as `./github-watch`: a poll round of notifications, the pull requests of open Tickets with their CI, and subscribed Threads |
 | `src/sources/github-trigger.ts` | GitHub comments, reviews, Issue bodies and CI changes as Triggers, and GitHub addresses |
 | `src/sources/github-pull.ts` | The pull request rules: which pull requests a Ticket follows (`claimPull`, `observePull`), the closes it reports to the Engine, and `pullEndNotices`, the chat notice of a Ticket that ended merged or closed |
@@ -378,6 +378,10 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/gitlab-trigger.ts` | GitLab notes, Issue bodies and merge request descriptions as Triggers, and GitLab addresses |
 | `src/sources/gitlab-channel.ts` | The GitLab Channel: notes on an issue or merge request, `sent` or `gone` |
 | `src/sources/gitlab-read.ts` | The `gitlab/` resources, and `gitlabThreadContext`: an issue's or merge request's conversation by page |
+| `src/sources/pingcode.ts` | The PingCode kind and plugin entry, exported as `./pingcode-watch`: a poll round of each watched project's changed work items with their comments, and subscribed Threads |
+| `src/sources/pingcode-trigger.ts` | PingCode work items and comments as Triggers, and PingCode addresses |
+| `src/sources/pingcode-channel.ts` | The PingCode Channel: comments on a work item, `sent` or `gone` |
+| `src/sources/pingcode-read.ts` | The `pingcode/` resources, and `pingcodeThreadContext`: a work item's description and comments by page |
 | `src/client/index.tsx` | The client plugin entry: the sidebar entry, the main panel and the page in DeepSeek Harness's Plugin Manager |
 | `src/client/app.tsx` | The panel: header, search, glossary, tabs and the page of the current route |
 | `src/client/provider.tsx` | What every page reads from its host: copy, calls, navigation, notices, the state poll, and `restart`, which reads the state quickly while dsh-superagent restarts |
@@ -401,7 +405,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/client/locales.ts` | All copy in both languages, and the glossary of [001 Domain model](001-domain.md) |
 | `src/client/client.css`, `css.d.ts` | The panel's stylesheet, loaded as text |
 
-`src/sources/github.ts` and `src/sources/feishu.ts` are also the entries of the two Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch` and `./feishu-watch`. The bundle's `cordis.patch.yml` inserts the three plugins, with Feishu disabled.
+`src/sources/github.ts`, `src/sources/feishu.ts`, `src/sources/gitlab.ts` and `src/sources/pingcode.ts` are also the entries of the Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch`, `./feishu-watch`, `./gitlab-watch` and `./pingcode-watch`. The bundle's `cordis.patch.yml` inserts the four plugins, with Feishu, GitLab and PingCode disabled.
 
 ## Tests
 
@@ -413,6 +417,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/registry.spec.ts` | `SourceRegistry`: instances, validation, Policy parts, Channels and Thread context |
 | `tests/sources.spec.ts` | The Feishu and GitHub Sources on a `SourceContext`: translation, polls and read positions, the pull request rules, health |
 | `tests/gitlab.spec.ts` | The GitLab Source on a `SourceContext`: Trigger translation, project polling and cursors, note reads, replies and resources |
+| `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
 | `tests/feishu-read.spec.ts`, `tests/github-read.spec.ts` | Feishu and GitHub reads |
 | `tests/admission-context.spec.ts`, `tests/feishu-image.spec.ts` | The Thread window of assessments, and Feishu image reads |

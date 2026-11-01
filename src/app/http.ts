@@ -48,6 +48,7 @@ export interface HttpHost {
   readonly setupProblem?: SetupProblem | undefined
   readonly feishuProblem?: SetupProblem | undefined
   readonly gitlabProblem?: SetupProblem | undefined
+  readonly pingcodeProblem?: SetupProblem | undefined
   configured(): boolean
   links(): LinkTarget
   ticketEnvironment(ticket: Ticket): Variable[]
@@ -100,9 +101,12 @@ function setupView(runtime: HttpHost) {
   return {
     machine: machineView(runtime.machine), problem: runtime.setupProblem ?? null, feishuProblem: runtime.feishuProblem ?? null,
     gitlabProblem: runtime.gitlabProblem ?? null,
+    pingcodeProblem: runtime.pingcodeProblem ?? null,
     accounts: resolved ? { repository: resolved.repository, agent: resolved.github.login,
       feishu: resolved.feishu ? { appId: resolved.feishu.appId, brand: resolved.feishu.brand, botId: resolved.feishu.botId, name: resolved.feishu.name } : null,
-      gitlab: resolved.gitlab ? { host: resolved.gitlab.host, login: resolved.gitlab.login } : null } : null,
+      gitlab: resolved.gitlab ? { host: resolved.gitlab.host, login: resolved.gitlab.login } : null,
+      pingcode: resolved.pingcode ? { skill: resolved.pingcode.skill, login: resolved.pingcode.login,
+        projects: resolved.pingcode.projects.map(project => project.identifier || project.name) } : null } : null,
   }
 }
 /** Build the `/orchestrator/api/state` response consumed by the management panel and `scripts/dsh-superagent status` (`docs/006-deployment.md`). */
@@ -114,7 +118,8 @@ export function stateView(runtime: HttpHost) {
 }
 const views = (runtime: HttpHost): ViewHost => ({ store: runtime.store, sources: runtime.sources, links: runtime.links() })
 const setupState = (runtime: HttpHost): SetupState => ({ deployment: runtime.configured() ? runtime.deployment : undefined,
-  problem: runtime.setupProblem, feishuProblem: runtime.feishuProblem, gitlabProblem: runtime.gitlabProblem })
+  problem: runtime.setupProblem, feishuProblem: runtime.feishuProblem, gitlabProblem: runtime.gitlabProblem,
+  pingcodeProblem: runtime.pingcodeProblem })
 export type StateView = ReturnType<typeof stateView>
 /** Builds a ticket's detail view; `environment` is empty while waiting for setup because it requires the resolved deployment. */
 function ticketPage(runtime: HttpHost, id: string) {
@@ -159,7 +164,7 @@ function routes(runtime: HttpHost): Routes {
   return {
     'GET state': () => stateView(runtime),
     'GET overview': () => overview(views(runtime), runtime.health, policyVersion(store.settings()),
-      executorLoad(store, runtime.executor.activeCount()), runtime.setupProblem ?? runtime.feishuProblem ?? runtime.gitlabProblem),
+      executorLoad(store, runtime.executor.activeCount()), runtime.setupProblem ?? runtime.feishuProblem ?? runtime.gitlabProblem ?? runtime.pingcodeProblem),
     'GET search': ({ query }) => search(views(runtime), query.q ?? '', runtime.sourceLinks),
     'GET sources': () => sourcesStatus(views(runtime), runtime.health, setupState(runtime)),
     'GET settings': () => settingsView(store, runtime.sources, runtime.health, setupState(runtime), runtime.machine.stateDir),

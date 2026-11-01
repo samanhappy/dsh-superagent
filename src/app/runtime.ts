@@ -101,7 +101,8 @@ export class Runtime extends Service implements SourceHost {
         ? environmentOf({ deployment: setup.deployment, sources: this.sources, settings: store.settings() }) : undefined
       const feishu = () => setup.configured() && !!setup.deployment.feishu
       const gitlab = () => setup.configured() && !!setup.deployment.gitlab
-      const prompts = this.prompts = new Prompts(store, () => machine.promptMaxChars.get(), deployed, feishu, gitlab)
+      const pingcode = () => setup.configured() && !!setup.deployment.pingcode
+      const prompts = this.prompts = new Prompts(store, () => machine.promptMaxChars.get(), deployed, feishu, gitlab, pingcode)
       const masterId = this.masterId = store.get(KV.runtime.masterId) ?? `orchestrator-${key(machine.stateDir)}`
       store.set(KV.runtime.masterId, masterId)
       const commands = this.commands = new Commands(() => setup.deployment, setup.commandEnvironment, this.lifetime)
@@ -160,7 +161,8 @@ export class Runtime extends Service implements SourceHost {
       this.sourceDeps = { store, engine, outbox, commands, sources, get ready() { return runtime.ready },
         get deployment() { return setup.deployment }, configured: () => setup.configured(),
         get setupProblem() { return setup.problem }, get feishuProblem() { return setup.feishuProblem },
-        get gitlabProblem() { return setup.gitlabProblem }, receive: trigger => passes.receive(trigger) }
+        get gitlabProblem() { return setup.gitlabProblem }, get pingcodeProblem() { return setup.pingcodeProblem },
+        receive: trigger => passes.receive(trigger) }
       this.toolHost = { context: ctx, engine, store, prompts, sessions, settings: this.settings, assessor, resources,
         get github() { return runtime.context({ kind: 'github', health: ['github'] }) },
         requestPass: () => { passes.request() }, sendReplies: () => outbox.sent(),
@@ -184,6 +186,8 @@ export class Runtime extends Service implements SourceHost {
   get feishuProblem(): SetupProblem | undefined { return this.setup.feishuProblem }
   /** Why the GitLab account is unavailable even though the GitLab Source configures a CLI. */
   get gitlabProblem(): SetupProblem | undefined { return this.setup.gitlabProblem }
+  /** Why the PingCode skill is unavailable even though the PingCode Source configures projects. */
+  get pingcodeProblem(): SetupProblem | undefined { return this.setup.pingcodeProblem }
   links(): LinkTarget {
     const resolved = this.setup.configured() ? this.setup.deployment : undefined
     const links = resolved ? { repository: resolved.repository, ...(resolved.feishu ? { feishu: resolved.feishu } : {}), ...(resolved.gitlab ? { gitlab: resolved.gitlab } : {}) } : {}
@@ -226,7 +230,8 @@ export class Runtime extends Service implements SourceHost {
     return { store, sources, prompts, sessions, settings, engine, executor, health, machine, masterId, ready, sourceLinks,
       get deployment() { return setup.deployment },
       get setupProblem() { return setup.problem }, get feishuProblem() { return setup.feishuProblem },
-      get gitlabProblem() { return setup.gitlabProblem }, configured: () => setup.configured(), links: () => runtime.links(), ticketEnvironment: ticket => runtime.ticketEnvironment(ticket),
+      get gitlabProblem() { return setup.gitlabProblem }, get pingcodeProblem() { return setup.pingcodeProblem },
+      configured: () => setup.configured(), links: () => runtime.links(), ticketEnvironment: ticket => runtime.ticketEnvironment(ticket),
       checkSetup: () => { setup.check() }, requestPass: () => { passes.request() }, models: () => this.ctx.sessionController.modelCatalog() }
   }
   /** Idempotent stop; concurrent or repeated calls share the same shutdown promise. */

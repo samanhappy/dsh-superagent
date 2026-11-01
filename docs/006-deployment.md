@@ -6,7 +6,7 @@ Use this guide to install, configure and operate dsh-superagent. It covers accou
 
 - **A dedicated DeepSeek Harness profile**, called `superagent` in this guide. Create it from the Web profile template. It loads the bundle and serves its panel on `127.0.0.1`. Keep it separate from the profile you work in: the plugin changes process-wide `PATH` and git settings, and its process needs independent restarts and upgrades.
 - **An agent GitHub account.** The agent comments, pushes branches and opens pull requests as this account, through a GitHub CLI signed in only as that account.
-- **Optional:** a Feishu bot for chat requests and a GitLab account for issues and merge requests.
+- **Optional:** a Feishu bot for chat requests, a GitLab account for issues and merge requests, and a PingCode account for work items and their comments.
 
 Plugin configuration holds the state directory and machine limits. Use the panel for everything else: Sources for the repository and accounts, Policy for allowed lists, and Execution for worker directories and commands.
 
@@ -26,6 +26,7 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 - A model provider configured for DeepSeek Harness. dsh-superagent uses the profile's default model unless the Eval or Execution settings name another.
 - For Feishu: `lark-cli` (tested with 1.0.90) and a Feishu or Lark app with a bot
 - For GitLab: `glab` (tested with 1.102.0) and a GitLab account that is a Developer of every watched project, with a wrapper signed in only as that account
+- For PingCode: `python3`, and the PingCode skill (a directory holding `scripts/api_call.py` and `.env`) configured with a PingCode enterprise app's user token
 
 ## Accounts
 
@@ -88,6 +89,19 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
    Signing in with a token instead of interactively (`glab auth login --hostname <instance> --stdin < token`, or `--token`) stores no username, so the credential helper git asks answers with an empty username and every HTTPS push fails with `HTTP Basic: Access denied`. Add it once with `glab config set user <username> --host <instance>`; the API checks in setup pass either way.
 
+### Agent PingCode account (optional)
+
+1. Install the PingCode skill in a directory holding `scripts/api_call.py` and `.env`, and configure it with a PingCode enterprise app that issues a user token. Set `PINGCODE_AUTH_MODE=authorization_code` and `PINGCODE_ACCESS_TOKEN` in `.env`; dsh-superagent reads `/v1/myself` through the skill, so an enterprise (`client_credentials`) token that cannot see that endpoint does not work.
+2. Authorize the agent's PingCode account in that directory:
+
+   ```sh
+   python3 scripts/auth_user.py
+   ```
+
+   The user token expires after 30 days. Run the same command to authorize again; until it succeeds, setup reports `pingcodeTokenInvalid`.
+
+   The Source looks for the skill in `~/.agents/skills/pingcode`, then `~/.workbuddy/skills/pingcode`, and accepts another directory in the PingCode card's skill field. The `.env` decides which account answers, and dsh-superagent posts replies to work items as that account.
+
 ## Install
 
 Run this block once, on a machine that has no `superagent` profile yet:
@@ -108,7 +122,7 @@ Run the profile-creation command only for a new installation. If the profile alr
 
 ## Machine configuration
 
-Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for GitLab, the `dsh-superagent-gitlab` entry. The `webserver` entry sets the panel's port.
+Copy [examples/profile.cordis.patch.yml](../examples/profile.cordis.patch.yml) to `~/.dsh/profiles/superagent/cordis.patch.yml`, replacing that file, and replace every `<placeholder>`. For Feishu, also enable the `dsh-superagent-feishu` entry there; for GitLab, the `dsh-superagent-gitlab` entry; for PingCode, the `dsh-superagent-pingcode` entry. The `webserver` entry sets the panel's port.
 
 | Key | Required | Meaning |
 | --- | --- | --- |
@@ -164,8 +178,8 @@ Check dsh-superagent: run `scripts/dsh-superagent --profile superagent status` i
 
 Setup must succeed before polling or work starts. Overview lists missing requirements and links to their settings. A settings change runs setup again. If you fix something outside the application, such as CLI authentication, choose **Check again**.
 
-1. **Sources.** Set the GitHub repository (`owner/name`) and agent CLI, for example `/home/me/.local/bin/gh-agent`. Requests normally arrive through the agent account's notifications. A new Issue or comment mentioning the account arrives on the next poll; adding a mention by editing an existing Issue body does not. Post a new comment instead. For Feishu, set the bot CLI, chats, each chat's receive-all or mentions-only mode, and whether to receive direct messages. For GitLab, set the instance hostname, the agent's `glab` wrapper, the projects (`group/project`), and the switches for new Issues, new merge requests and comments; comments on a merge request diff are not received yet.
-2. **Policy.** The two example rules can be edited or removed. Under **On each Source**, add the GitHub accounts, GitLab accounts and Feishu users who may ask for work; until a list has someone, no request can become a Ticket. With Feishu, a chat can be chosen to sync the list from, at startup and on **Sync now**.
+1. **Sources.** Set the GitHub repository (`owner/name`) and agent CLI, for example `/home/me/.local/bin/gh-agent`. Requests normally arrive through the agent account's notifications. A new Issue or comment mentioning the account arrives on the next poll; adding a mention by editing an existing Issue body does not. Post a new comment instead. For Feishu, set the bot CLI, chats, each chat's receive-all or mentions-only mode, and whether to receive direct messages. For GitLab, set the instance hostname, the agent's `glab` wrapper, the projects (`group/project`), and the switches for new Issues, new merge requests and comments; comments on a merge request diff are not received yet. For PingCode, set the skill directory, the `python3`, and the projects (ID, identifier or name), and the switches for new work items and comments; saving resolves each project through `/v1/pjm/projects`, and with both switches off only work items and comments that mention the agent are received.
+2. **Policy.** The two example rules can be edited or removed. Under **On each Source**, add the GitHub accounts, GitLab accounts, Feishu users and PingCode accounts who may ask for work; until a list has someone, no request can become a Ticket. With Feishu, a chat can be chosen to sync the list from, at startup and on **Sync now**.
 3. **Execution.** The directory root and a prepare command. To give each Ticket a checkout of the repository:
 
    ```sh
@@ -219,8 +233,8 @@ A refusal has a status and `error`, its English text:
 
 The blocks:
 
-- `source:github`, `source:feishu`, `source:gitlab`: `{"enabled": true, "config": {…}}`. GitHub's config has `repository` and `cli`, and the switches `observeIssues`, `observePulls`, `observeComments` and `observeCi`, off by default, which receive every new Issue, new pull request and comment in the repository and the default branch's CI; Feishu's has `cli`, `chats` as `[{"chatId": "oc_…", "name": "…", "listen": "mentions"}]` (or `"all"`), `directMessages`, and `otherChats` as `"none"` or `"mentions"`; GitLab's has `host`, `cli`, `projects` as `[{"path": "group/project"}]`, `pollSeconds`, `failuresBeforeError`, and the switches `observeIssues`, `observeMergeRequests` and `observeComments`, off by default.
-- `policy`: `{"rules": […], "sources": {"github": {"allowed": [{"id": "<login>"}], "bots": [{"id": "dependabot[bot]"}]}, "feishu": {"allowed": [{"id": "ou_…", "name": "…"}], "syncChat": "oc_…", "admission": {"oc_…": {"unlistedAddressed": "explicit"}}}}}`. `bots` lists the bots whose messages may become inferred candidates. An `admission` row is keyed by chat id, `other` or `direct` for Feishu, and by `issues`, `pulls`, `comments` or `ci` for GitHub, and by `issues`, `mergeRequests` or `comments` for GitLab; an unset cell takes its default (see [002 Authorization](002-authorization.md)).
+- `source:github`, `source:feishu`, `source:gitlab`, `source:pingcode`: `{"enabled": true, "config": {…}}`. GitHub's config has `repository` and `cli`, and the switches `observeIssues`, `observePulls`, `observeComments` and `observeCi`, off by default, which receive every new Issue, new pull request and comment in the repository and the default branch's CI; Feishu's has `cli`, `chats` as `[{"chatId": "oc_…", "name": "…", "listen": "mentions"}]` (or `"all"`), `directMessages`, and `otherChats` as `"none"` or `"mentions"`; GitLab's has `host`, `cli`, `projects` as `[{"path": "group/project"}]`, `pollSeconds`, `failuresBeforeError`, and the switches `observeIssues`, `observeMergeRequests` and `observeComments`, off by default; PingCode's has `skill`, `python`, `projects` as `[{"project": "SCR"}]`, `pollSeconds`, `failuresBeforeError`, and the switches `observeWorkItems` and `observeComments`, off by default.
+- `policy`: `{"rules": […], "sources": {"github": {"allowed": [{"id": "<login>"}], "bots": [{"id": "dependabot[bot]"}]}, "feishu": {"allowed": [{"id": "ou_…", "name": "…"}], "syncChat": "oc_…", "admission": {"oc_…": {"unlistedAddressed": "explicit"}}}}}`. PingCode's part is `{"allowed": [{"id": "<account name>"}]}`. `bots` lists the bots whose messages may become inferred candidates. An `admission` row is keyed by chat id, `other` or `direct` for Feishu, and by `issues`, `pulls`, `comments` or `ci` for GitHub, by `issues`, `mergeRequests` or `comments` for GitLab, and by `workItems` or `comments` for PingCode; an unset cell takes its default (see [002 Authorization](002-authorization.md)).
 - `eval`: `mode`, `timeoutSeconds` and `model`.
 - `executor`: `model`, `maxWorkers`, `directory`, `prepare` and `blockedCommands`. The processing pause is a setting of its own, `paused`, which `POST executor/pause` sets.
 
@@ -237,7 +251,7 @@ curl -s -X PUT -H 'x-orchestrator-request: 1' -H 'content-type: application/json
 
 Setup uses the DeepSeek Harness subprocess service, as worker shells do. It removes environment variables whose names contain KEY, PASSWORD, SECRET or TOKEN.
 
-Setup verifies the GitHub repository and the agent's push access, writes the worker environment, and checks that git uses only the agent credentials for github.com. When the GitLab Source names a CLI, setup also verifies the account and its Developer access to every project, and checks the credentials for that instance. A Feishu or GitLab setup failure disables only that Source.
+Setup verifies the GitHub repository and the agent's push access, writes the worker environment, and checks that git uses only the agent credentials for github.com. When the GitLab Source names a CLI, setup also verifies the account and its Developer access to every project, and checks the credentials for that instance. When the PingCode Source names a skill or a project, setup also verifies the skill directory, its `python3`, the user token through `/v1/myself`, and each project against `/v1/pjm/projects`. A Feishu, GitLab or PingCode setup failure disables only that Source.
 
 The process environment that setup writes:
 
@@ -248,7 +262,7 @@ A file in `worker-bin` or `worker-gitconfig` that dsh-superagent did not write s
 
 ## Try it
 
-From an allowed GitHub account, open an Issue or post a comment containing `@<agent login> <request>`. Within a polling interval (one minute by default), Overview should show a Ticket. The agent acknowledges the request, works in its own Session and directory, and delivers in the original conversation. For Feishu, mention the bot in a configured chat. For GitLab, open an Issue or merge request, or comment with `@<agent username>`, in a watched project; with the comment and new-object switches on, objects and comments that do not mention the agent are received too.
+From an allowed GitHub account, open an Issue or post a comment containing `@<agent login> <request>`. Within a polling interval (one minute by default), Overview should show a Ticket. The agent acknowledges the request, works in its own Session and directory, and delivers in the original conversation. For Feishu, mention the bot in a configured chat. For GitLab, open an Issue or merge request, or comment with `@<agent username>`, in a watched project; with the comment and new-object switches on, objects and comments that do not mention the agent are received too. For PingCode, open a work item or comment with `@<agent account name>` in a watched project; with the work-item and comment switches on, the rest of a watched project is received too, subject to the admission table.
 
 ## Upgrade
 
@@ -287,6 +301,13 @@ Setup problems appear on the overview with a link to the fix, in the panel's lan
 | `The agent GitLab CLI cannot read its account` | Sign the wrapper in with `glab auth login --hostname <instance>` |
 | `@… cannot read …` or `@… is not a Developer of …` | Add the agent's GitLab account to that project as a Developer |
 | `The GitLab Source names no project.` | Add at least one project, `group/project`, on the GitLab card |
+| `No PingCode skill directory was found (it must hold scripts/api_call.py and .env): …` | Install the PingCode skill, or set its directory on the PingCode card |
+| `The python3 the PingCode skill runs on was not found.` | Set `python` on the PingCode card to a `python3` command name or absolute path |
+| `The PingCode skill could not call the API.` | Run `scripts/api_call.py` by hand as the operator's user and fix what it reports: the skill directory, its `.env`, or the network |
+| `The PingCode user token is missing, expired or invalid; run scripts/auth_user.py in the skill directory to authorize again.` | Run that command in the skill directory; the user token expires after 30 days |
+| `The PingCode API did not report the account of the user token.` | Use a user token (`PINGCODE_AUTH_MODE=authorization_code`); an enterprise token cannot read `/v1/myself` |
+| `The project … was not found; name it by project ID, identifier or name.` | Fix the project row; saving resolves it against `/v1/pjm/projects` |
+| `The PingCode Source names no project.` | Add at least one project on the PingCode card |
 | `status` exits 2 | A part reports an error, which a restart does not fix: `errors` names each part, as listed under Management API, with its detail; each part clears its own entry once it works again |
 | `status` exits 3 | Setup waits: `setup` says what is missing, and the overview links to the setting that fixes it |
 | `status` exits 1 | The service does not run, runs twice, does not answer, or its runtime reports an error; the output and the newest log say which |

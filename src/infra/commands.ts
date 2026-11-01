@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process'
 import { basename } from 'node:path'
 import { promisify } from 'node:util'
 import { z } from 'zod'
-import type { Deployment } from '../deployment.ts'
+import { skillScript, type Deployment } from '../deployment.ts'
 import { sameName } from './text.ts'
 
 const exec = promisify(execFile)
@@ -29,6 +29,19 @@ export function commandError(error: unknown, program = 'command'): Error {
     // `gh` exits non-zero on HTTP errors (such as `gh: Not Found (HTTP 404)`) and on `gh: HTTP 304`, which ETag polling relies on.
     if (stderr) return new CliError(stderr.slice(0, 2000), Number(/\bHTTP (\d{3})\b/.exec(stderr)?.[1]) || undefined, exitCode)
   }
+  // A script that reports the failure on stdout, as the PingCode skill does, has nothing to say on stderr.
+  const printed = (error as { stdout?: unknown } | null)?.stdout
+  if (typeof printed === 'string' && printed.trim()) {
+    const text = printed.trim().slice(0, 2000)
+    try {
+      const parsed = JSON.parse(text.slice(text.indexOf('{'))) as { code?: unknown; message?: unknown }
+      if (typeof parsed.message === 'string') {
+        const code = Number(parsed.code)
+        return new CliError(`${parsed.message}${Number.isFinite(code) ? ` (${code})` : ''}`, Number.isFinite(code) ? code : undefined, exitCode)
+      }
+    } catch { /* Not a JSON error report; the printed text is kept below. */ }
+    return new CliError(text, undefined, exitCode)
+  }
   return new CliError(`${basename(program)} ${ended(error)}`, undefined, exitCode)
 }
 function ended(error: unknown): string {
@@ -41,6 +54,15 @@ function ended(error: unknown): string {
   return typeof code === 'string' ? `could not run: ${code}` : 'failed'
 }
 export interface Tally { skipped: number }
+/** One whitelisted PingCode API call: the method, an API path, query parameters and an optional JSON body. */
+export interface PingcodeCall {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  path: string
+  params?: Record<string, string> | undefined
+  body?: unknown
+  /** Reads every page of a list endpoint, which the script merges into one `{total, values}`. */
+  fetchAll?: boolean
+}
 /** Parses array elements against a schema, skipping invalid items and incrementing `tally.skipped`. */
 export function validItems<T>(item: z.ZodType<T>, list: readonly unknown[], tally?: Tally): T[] {
   const items = list.flatMap(value => { const parsed = item.safeParse(value); return parsed.success ? [parsed.data] : [] })
@@ -124,6 +146,33 @@ export class Commands {
     const outside = /^\/|^[a-z]+:|(^|\/)\.\.?(\/|\?|$)/i.test(path)
     if (!configured.some(item => sameName(item, project)) || outside) throw new Error('GitLab calls are restricted to the configured projects')
     return `projects/${encodeURIComponent(project)}${path ? `/${path}` : ''}`
+  }
+  /**
+   * Calls the PingCode API through the skill's `scripts/api_call.py`, validating JSON output.
+   * Only the API's `/v1` paths are reachable, and the skill's own `.env` decides which account answers.
+   * @throws CliError naming the API's error code when the call fails.
+   */
+  async pingcode<T>(call: PingcodeCall): Promise<T> {
+    const account = this.deployment.pingcode
+    if (!account) throw new Error('The PingCode Source has no working skill directory')
+    const path = call.path
+    if (!/^\/v1\/[A-Za-z0-9_.\-/]+$/.test(path) || path.includes('..')) throw new Error('PingCode calls are restricted to the API v1 paths')
+    const params = Object.keys(call.params ?? {}).filter(key => (call.params?.[key] ?? '') !== '').sort()
+    const argv = [skillScript(account.skill), call.method, path, '--raw', ...call.fetchAll ? ['--fetch-all'] : []]
+    if (params.length) argv.push('--params', ...params.map(key => `${key}=${String(call.params?.[key])}`))
+    if (call.body !== undefined) argv.push('--body', JSON.stringify(call.body))
+    const text = await this.run(account.python, argv)
+    let value: unknown
+    try { value = JSON.parse(text.slice(Math.max(0, text.search(/[[{]/)))) } catch { throw new CliError(`PingCode returned no JSON: ${text.trim().slice(0, 200)}`) }
+    // A business error arrives with HTTP 200 as `{code, message}`; treating it as data would read as an empty result.
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const error = value as Record<string, unknown>
+      if (typeof error.code === 'string' && typeof error.message === 'string' && !('id' in error) && !('values' in error) && !('total' in error)) {
+        const code = Number(error.code)
+        throw new CliError(`${error.message} (${error.code})`, Number.isFinite(code) ? code : undefined)
+      }
+    }
+    return value as T
   }
   /**
    * Runs the Feishu bot's `lark-cli` and returns the JSON `data` payload.

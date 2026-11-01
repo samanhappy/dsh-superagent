@@ -13,3 +13,6 @@
 # GitLab is optional too: uncomment to enable its Source, then set the glab wrapper and projects on the GitLab Source.
 # - id: dsh-superagent-gitlab
 #   disabled: false
+# PingCode is optional too: uncomment to enable its Source, then set the skill directory and projects on the PingCode Source.
+# - id: dsh-superagent-pingcode
+#   disabled: false

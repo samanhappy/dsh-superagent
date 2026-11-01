@@ -60,4 +60,9 @@ export const KV = {
    * shared by the stream and thread reads (deterministic Trigger IDs deduplicate the overlap).
    */
   gitlab: { since: family<string, [project: string]>('gitlab-since:'), thread: family<string, [thread: string]>('gitlab-thread:') },
+  /**
+   * PingCode Source: the per-project cursor of work items and comments read in full, and the per-subscribed-thread cursor
+   * shared by the stream and thread reads (deterministic Trigger IDs deduplicate the overlap).
+   */
+  pingcode: { since: family<string, [project: string]>('pingcode-since:'), thread: family<string, [thread: string]>('pingcode-thread:') },
 }

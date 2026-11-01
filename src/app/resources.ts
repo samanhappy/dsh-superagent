@@ -4,6 +4,7 @@ import { UserError, key, latestReport, reached, runningAssignment, threadKey, ty
 import { batchOf, inputMessage, triggerMessage, workerSessionId } from '../executor/dsh.ts'
 import { readGithub } from '../sources/github-read.ts'
 import { readGitlab } from '../sources/gitlab-read.ts'
+import { readPingcode } from '../sources/pingcode-read.ts'
 import { feishuReferences, feishuRead } from '../sources/feishu-read.ts'
 import { feishuRef } from '../sources/feishu.ts'
 import { feishuTriggerId } from '../sources/feishu-trigger.ts'
@@ -54,6 +55,7 @@ export const RESOURCES: readonly { name: string; holds: string; executor?: true 
   { name: 'feishu/<trigger-id>/…', holds: 'a Feishu original, as the dsh-superagent-feishu skill describes', executor: true },
   { name: 'github/…', holds: 'a GitHub original, as the dsh-superagent-github skill describes', executor: true },
   { name: 'gitlab/…', holds: 'a GitLab original, as the dsh-superagent-gitlab skill describes', executor: true },
+  { name: 'pingcode/…', holds: 'a PingCode work item and its comments, as the dsh-superagent-pingcode skill describes', executor: true },
 ]
 export const resourceGrammar = (executor: boolean): string => RESOURCES.filter(resource => !executor || resource.executor)
   .map(resource => `${resource.name}: ${resource.holds}`).join('; ')
@@ -210,6 +212,7 @@ const ROUTES: readonly Route[] = [
   }],
   ['github/', read => sourcePage(read, 'github', () => readGithub(read.host.commands.withSignal(read.signal), read.resource))],
   ['gitlab/', read => sourcePage(read, 'gitlab', () => readGitlab(read.host.commands.withSignal(read.signal), read.resource))],
+  ['pingcode/', read => sourcePage(read, 'pingcode', () => readPingcode(read.host.commands.withSignal(read.signal), read.resource))],
   ['trigger/', async read => {
     const { host, rest, ticketId, offset, signal } = read
     if (!rest || rest.includes('/')) throw new Error('Unknown context resource')
