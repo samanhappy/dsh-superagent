@@ -1,0 +1,88 @@
+README.md
+  h_18676a549cd52a 7
+cordis.patch.yml
+  h_18676a549cd52a 17-20
+docs/001-domain.md
+  h_18676a549cd52a 71,75
+docs/002-authorization.md
+  h_18676a549cd52a 61,71
+docs/004-prompts.md
+  h_18676a549cd52a 16,27
+docs/005-panel.md
+  h_18676a549cd52a 36
+docs/006-deployment.md
+  h_18676a549cd52a 9,29,92-104,125,181-182,236-237,254,265,304-310
+docs/007-architecture.md
+  h_18676a549cd52a 252,285-286,364,381-384,408,420
+docs/008-cookbook.md
+  h_18676a549cd52a 78
+examples/profile.cordis.patch.yml
+  h_18676a549cd52a 16-18
+package.json
+  h_18676a549cd52a 20
+skills/dsh-superagent-pingcode/SKILL.md
+  h_18676a549cd52a 1-12
+src/app/context.ts
+  h_18676a549cd52a 14-16
+src/app/http.ts
+  h_18676a549cd52a 51,104,107-109,121-122,167
+src/app/prompts.ts
+  h_18676a549cd52a 26,71,123,140,147,149-150
+src/app/resources.ts
+  h_18676a549cd52a 7,58,215
+src/app/runtime.ts
+  h_18676a549cd52a 104-105,164-165,189-190,233-234
+src/app/setup.ts
+  h_18676a549cd52a 4,29,57,67-68,97-104
+src/app/skill-files.ts
+  h_18676a549cd52a 24
+src/app/source-context.ts
+  h_18676a549cd52a 27-28,45
+src/app/views/sources.ts
+  h_18676a549cd52a 31-32,34-35
+src/client/deployment.tsx
+  h_18676a549cd52a 60-61,71
+src/client/locales.ts
+  h_18676a549cd52a 35,39,152-153,472,563-564,765-771,777
+src/client/overview.tsx
+  h_18676a549cd52a 27-29
+src/deployment.ts
+  h_18676a549cd52a 3-4,12,59-65,68,75,80-83,170-218
+src/infra/commands.ts
+  h_18676a549cd52a 6,32-44,57-65,150-176
+src/kv.ts
+  h_18676a549cd52a 63-67
+src/setup.ts
+  h_18676a549cd52a 4,29-35
+src/sources/host.ts
+  h_18676a549cd52a 17
+src/sources/pingcode-channel.ts
+  h_18676a549cd52a 1-40
+src/sources/pingcode-read.ts
+  h_18676a549cd52a 1-73
+src/sources/pingcode-trigger.ts
+  h_18676a549cd52a 1-102
+src/sources/pingcode.ts
+  h_18676a549cd52a 1-251
+tests/bundle-patch.spec.ts
+  h_18676a549cd52a 32
+tests/deployment.spec.ts
+  h_18676a549cd52a 7,114-138
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 130-131,255,257
+tests/pingcode.spec.ts
+  h_18676a549cd52a 1-197
+tsdown.config.ts
+  h_18676a549cd52a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed98a0771e9b2e05ec4b2e1248a258949dd3d925",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
