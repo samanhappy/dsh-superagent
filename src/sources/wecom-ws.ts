@@ -3,6 +3,7 @@
  * The wire protocol is the documented one behind `@wecom/aibot-node-sdk`: `{ cmd, headers: { req_id }, body }` both ways,
  * an ack carrying `errcode`, and `aibot_msg_callback` / `aibot_event_callback` frames pushed by WeCom.
  */
+import WebSocket from 'ws'
 export const DEFAULT_WECOM_WS_URL = 'wss://openws.work.weixin.qq.com'
 /** How often the connection pings; WeCom drops a silent connection. */
 export const WECOM_HEARTBEAT_MS = 30_000
@@ -32,6 +33,11 @@ export interface WecomSocketLike {
   close(code?: number, reason?: string): void
   addEventListener(type: 'open' | 'message' | 'close' | 'error', listener: SocketListener): void
 }
+/**
+ * WeCom's gateway matches the handshake's `Connection`/`Upgrade` header names case-sensitively and answers anything else
+ * with 404. Node's built-in WebSocket (undici) lower-cases header names, so it cannot connect; `ws` sends the canonical
+ * names the gateway accepts.
+ */
 const defaultSocket = (url: string): WecomSocketLike => new WebSocket(url) as unknown as WecomSocketLike
 /** An ack carrying a non-zero `errcode`; `code` is WeCom's error code. */
 export class WecomAckError extends Error {

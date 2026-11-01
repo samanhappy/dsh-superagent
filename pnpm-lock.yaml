@@ -14,6 +14,9 @@ importers:
       qrcode-generator:
         specifier: 1.4.4
         version: 1.4.4
+      ws:
+        specifier: 8.22.0
+        version: 8.22.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -108,6 +111,9 @@ importers:
       '@types/react-dom':
         specifier: 18.3.7
         version: 18.3.7(@types/react@18.3.28)
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
       jsdom:
         specifier: 29.1.1
         version: 29.1.1
@@ -956,6 +962,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@vitest/expect@4.1.8':
     resolution: {integrity: sha512-h3nDO677RDLEGlBxyQ5CW8RlMThSKSRLUePLOx09gNIWRL40edgA1GCZSZgf1W55MFAG6/Sw14KeaAnqv0NKdQ==}
@@ -2616,6 +2625,10 @@ snapshots:
   '@types/retry@0.12.5': {}
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 22.20.0
 
   '@vitest/expect@4.1.8':
     dependencies:

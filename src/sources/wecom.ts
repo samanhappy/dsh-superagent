@@ -96,7 +96,7 @@ export async function runWecom(ctx: SourceContext, signal: AbortSignal): Promise
     }
     ctx.report('wecom', { state: 'starting', detail: 'Connecting to WeCom' })
     const began = Date.now()
-    const outcome = await connect(ctx, { ...robot, wsUrl: config.wsUrl || robot.wsUrl }, () => { failures = 0 })
+    const outcome = await connect(ctx, { ...robot, wsUrl: config.wsUrl || robot.wsUrl }, () => { failures = 0 }, signal)
     if (signal.aborted) return
     if (outcome === 'taken-over') {
       ctx.report('wecom', { state: 'error', detail: TAKEN_OVER })
@@ -109,15 +109,17 @@ export async function runWecom(ctx: SourceContext, signal: AbortSignal): Promise
   }
 }
 /** One connection attempt; resolves once it ended. */
-function connect(ctx: SourceContext, robot: WecomRobot, ready: () => void): Promise<'closed' | 'taken-over'> {
+function connect(ctx: SourceContext, robot: WecomRobot, ready: () => void, signal: AbortSignal): Promise<'closed' | 'taken-over'> {
   return new Promise(resolve => {
     let settled = false
     let chain = Promise.resolve()
     let watch: ReturnType<typeof setInterval> | undefined
+    let stop: (() => void) | undefined
     const finish = (outcome: 'closed' | 'taken-over'): void => {
       if (settled) return
       settled = true
       if (watch) clearInterval(watch)
+      if (stop) signal.removeEventListener('abort', stop)
       resolve(outcome)
     }
     const client = new WecomConnection(robot, {
@@ -136,9 +138,15 @@ function connect(ctx: SourceContext, robot: WecomRobot, ready: () => void): Prom
     setActiveWecom(client)
     // The connection is opened from the settings as they are now; a change or the Source being switched off ends it.
     watch = setInterval(() => {
+      // The plugin may be disposed between ticks; reading the closed store then would crash DSH.
+      if (signal.aborted) { client.close('The WeCom Source stopped'); return }
       const current = ctx.config<WecomConfig>(SOURCE)
       if (!current || !sameBot(current, robot)) client.close('The WeCom Source changed')
     }, 5000)
+    // Disposal must end the attempt at once, so no timer survives into the next incarnation of the plugin.
+    stop = () => client.close('The WeCom Source stopped')
+    signal.addEventListener('abort', stop, { once: true })
+    if (signal.aborted) { stop(); return }
     client.start()
   })
 }

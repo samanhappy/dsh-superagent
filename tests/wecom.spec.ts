@@ -1,3 +1,6 @@
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { WebSocketServer } from 'ws'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WecomConfigSchema } from '../src/sources/wecom.ts'
 import { sendWecom, truncateWecom, WECOM_MARKDOWN_MAX_BYTES } from '../src/sources/wecom-channel.ts'
@@ -54,6 +57,10 @@ describe('wecom trigger', () => {
     expect(wecomTrigger(message({ from: { userid: 'bot-1' } }), 'bot-1')).toBeUndefined()
     expect(wecomTrigger({ msgid: '' }, 'bot-1')).toBeUndefined()
     expect(wecomTrigger('not a frame', 'bot-1')).toBeUndefined()
+  })
+  it('accepts a callback that names the receiving bot in aibotid, as WeCom sends it', () => {
+    expect(wecomTrigger(message({ aibotid: 'bot-1' }), 'bot-1')).toMatchObject({ text: 'Please fix the build', addressed: 'direct',
+      threads: [{ source: 'wecom', id: 'wecom:user-1' }] })
   })
   it('shows media as markers and a voice message as its transcription', () => {
     expect(wecomText({ msgid: 'm', msgtype: 'image', from: { userid: 'u' }, chattype: 'single' } as never)).toBe('[图片]')
@@ -115,6 +122,37 @@ describe('wecom long connection', () => {
       body: { msgid: 'e-1', msgtype: 'event', event: { eventtype: 'disconnected_event' } } })
     expect(client.isTakenOver).toBe(true)
     expect(h.onClosed).toHaveBeenCalledWith(expect.any(String), true)
+  })
+  it('connects to a gateway that matches handshake header names case-sensitively, as WeCom does', async () => {
+    const server = createServer()
+    const gateway = new WebSocketServer({ noServer: true })
+    // WeCom's gateway answers a lowercase `connection`/`upgrade` with 404; Node's built-in WebSocket sends them that way.
+    server.on('upgrade', (request, socket, head) => {
+      const names = new Set<string>()
+      for (let index = 0; index < request.rawHeaders.length; index += 2) names.add(request.rawHeaders[index]!)
+      if (!names.has('Connection') || !names.has('Upgrade')) {
+        socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n')
+        return
+      }
+      gateway.handleUpgrade(request, socket, head, ws => { gateway.emit('connection', ws, request) })
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    gateway.on('connection', socket => {
+      socket.on('message', data => {
+        const frame = JSON.parse(String(data)) as WecomFrame
+        if (frame.cmd === 'aibot_subscribe') socket.send(JSON.stringify({ headers: { req_id: frame.headers.req_id }, errcode: 0 }))
+      })
+    })
+    const h = handlers()
+    const client = new WecomConnection({ botId: 'bot-1', secret: 'secret-1', wsUrl: `ws://127.0.0.1:${(server.address() as AddressInfo).port}` }, h)
+    try {
+      client.start()
+      await vi.waitFor(() => expect(h.onReady).toHaveBeenCalledOnce(), { timeout: 3000 })
+    } finally {
+      client.close('test')
+      await new Promise<void>(resolve => gateway.close(() => resolve()))
+      await new Promise<void>(resolve => server.close(() => resolve()))
+    }
   })
 })
 

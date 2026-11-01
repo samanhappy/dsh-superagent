@@ -70,7 +70,8 @@ export function wecomTrigger(input: unknown, botId: string): Trigger | undefined
   const parsed = MessageSchema.safeParse(input)
   if (!parsed.success) return undefined
   const message = parsed.data
-  if (message.from.userid === botId || message.aibotid === botId) return undefined
+  // `aibotid` is the receiving bot's own id on every callback, so only the sender can identify the bot's own messages.
+  if (message.from.userid === botId) return undefined
   const conversation = wecomConversation(message)
   if (!conversation) return undefined
   const direct = message.chattype === 'single'
