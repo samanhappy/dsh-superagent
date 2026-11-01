@@ -7,18 +7,15 @@
 - id: dsh-superagent
   config:
     stateDir: <absolute path, for example /home/me/.dsh/state/superagent>
-# Feishu is optional: uncomment to enable its Source, then set the bot's lark-cli on the Feishu Source.
+# Every Source plugin is enabled by default and appears in Sources settings; unconfigured ones stay paused. To leave a
+# Source out of this profile, uncomment its entry below (feishu, wecom, weixin, gitlab, pingcode).
 # - id: dsh-superagent-feishu
-#   disabled: false
-# WeCom is optional too: uncomment to enable its Source, then set the intelligent robot's ID and secret on the WeCom Source.
+#   disabled: true
 # - id: dsh-superagent-wecom
-#   disabled: false
-# WeChat is optional too: uncomment to enable its Source, then log the bot in with the QR code on the WeChat Source.
+#   disabled: true
 # - id: dsh-superagent-weixin
-#   disabled: false
-# GitLab is optional too: uncomment to enable its Source, then set the glab wrapper and projects on the GitLab Source.
+#   disabled: true
 # - id: dsh-superagent-gitlab
-#   disabled: false
-# PingCode is optional too: uncomment to enable its Source, then set the skill directory and projects on the PingCode Source.
+#   disabled: true
 # - id: dsh-superagent-pingcode
-#   disabled: false
+#   disabled: true

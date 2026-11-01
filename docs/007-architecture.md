@@ -416,7 +416,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/client/locales.ts` | All copy in both languages, and the glossary of [001 Domain model](001-domain.md) |
 | `src/client/client.css`, `css.d.ts` | The panel's stylesheet, loaded as text |
 
-`src/sources/github.ts`, `src/sources/feishu.ts`, `src/sources/gitlab.ts` and `src/sources/pingcode.ts` are also the entries of the Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch`, `./feishu-watch`, `./gitlab-watch` and `./pingcode-watch`. The bundle's `cordis.patch.yml` inserts the four plugins, with Feishu, GitLab and PingCode disabled.
+`src/sources/github.ts`, `src/sources/feishu.ts`, `src/sources/wecom.ts`, `src/sources/weixin.ts`, `src/sources/gitlab.ts` and `src/sources/pingcode.ts` are also the entries of the Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch`, `./feishu-watch`, `./wecom-watch`, `./weixin-watch`, `./gitlab-watch` and `./pingcode-watch`. The bundle's `cordis.patch.yml` inserts the six plugins, all enabled; a profile disables the Sources it does not use.
 
 ## Tests
 

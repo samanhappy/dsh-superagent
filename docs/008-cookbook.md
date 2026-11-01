@@ -341,7 +341,7 @@ entry: { index: 'src/index.ts', 'github-watch': 'src/sources/github.ts', 'feishu
   'webhook-watch': 'src/sources/webhook.ts' },
 ```
 
-Then export the built file in `package.json` by adding `"./webhook-watch": "./lib/webhook-watch.js"` to `exports`, and add the plugin to the `insert` list of the bundle's `cordis.patch.yml`, disabled, as Feishu is:
+Then export the built file in `package.json` by adding `"./webhook-watch": "./lib/webhook-watch.js"` to `exports`, and add the plugin to the `insert` list of the bundle's `cordis.patch.yml`, disabled, so a profile opts in:
 
 ```yaml
     - id: dsh-superagent-webhook

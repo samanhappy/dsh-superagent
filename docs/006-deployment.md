@@ -6,7 +6,7 @@ Use this guide to install, configure and operate dsh-superagent. It covers accou
 
 - **A dedicated DeepSeek Harness profile**, called `superagent` in this guide. Create it from the Web profile template. It loads the bundle and serves its panel on `127.0.0.1`. Keep it separate from the profile you work in: the plugin changes process-wide `PATH` and git settings, and its process needs independent restarts and upgrades.
 - **An agent GitHub account.** The agent comments, pushes branches and opens pull requests as this account, through a GitHub CLI signed in only as that account.
-- **Optional:** a Feishu bot for chat requests, a GitLab account for issues and merge requests, and a PingCode account for work items and their comments.
+- **Optional accounts:** a Feishu bot for chat requests, a WeCom intelligent robot, a WeChat bot logged in by QR code, a GitLab account for issues and merge requests, and a PingCode account for work items and their comments. Every Source plugin is enabled by default and appears in Sources settings; one nobody configures stays paused. A profile leaves a Source out with `disabled: true` on its entry.
 
 Plugin configuration holds the state directory and machine limits. Use the panel for everything else: Sources for the repository and accounts, Policy for allowed lists, and Execution for worker directories and commands.
 
@@ -73,15 +73,13 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 ### WeCom robot (optional)
 
 1. In the WeCom admin console, create an intelligent robot (智能机器人) for the team and note its **bot ID** and **secret**.
-2. Enable the `dsh-superagent-wecom` entry in the profile, as the Feishu entry is enabled.
-3. Save the bot ID and secret on the WeCom Source in the panel. A private deployment also sets the long-connection URL its admin console gives; leave it empty for `wss://openws.work.weixin.qq.com`.
+2. Save the bot ID and secret on the WeCom Source in the panel. A private deployment also sets the long-connection URL its admin console gives; leave it empty for `wss://openws.work.weixin.qq.com`.
 
 The Source opens one long connection per bot and reconnects with backoff. WeCom keeps a single connection for a bot, so a second dsh-superagent or another client subscribed with the same bot takes the connection over; the Source reports that as an error and stops. Setup only checks that both credentials are present: a wrong secret shows as the WeCom Source's health, not as a setup problem, because it is known only once the connection is attempted.
 
 ### WeChat bot (optional)
 
-1. Enable the `dsh-superagent-weixin` entry in the profile, as the Feishu entry is enabled.
-2. Open the WeChat Source's card under **Settings → Sources**, choose **扫码登录**, and scan the code with WeChat on a phone; confirm on the phone, and the token is saved and dsh-superagent restarts.
+1. Open the WeChat Source's card under **Settings → Sources**, choose **扫码登录**, and scan the code with WeChat on a phone; confirm on the phone, and the token is saved and dsh-superagent restarts.
 
 The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct messages and replies in the same conversation. It is a personal WeChat bot built on Tencent's bot API: it sees only what people send it, keeps no readable history (assessments read the window this process remembered), and sends text only. A token the backend rejects with `-14` shows as the Source's health, and the Source stops for an hour so the account can be logged in again; setup only checks that a token is saved, so a wrong token never blocks the rest of dsh-superagent.
 
