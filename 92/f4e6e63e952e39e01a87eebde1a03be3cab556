@@ -1,0 +1,22 @@
+src/client/source.tsx
+  h_18676a549cd52a 21
+tests/panel-eval.spec.tsx
+  h_18676a549cd52a 165,200
+tests/panel-login.spec.tsx
+  h_18676a549cd52a 13-14,25,47,70
+tests/panel-settings.spec.tsx
+  h_18676a549cd52a 105
+tests/panel-source.spec.tsx
+  h_18676a549cd52a 34-36,45,72,100,106,108-111,138-139,148,160-162,266,326-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92f4e6e63e952e39e01a87eebde1a03be3cab556",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
