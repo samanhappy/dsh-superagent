@@ -1,0 +1,78 @@
+README.md
+  h_18676a549cd52a 7
+cordis.patch.yml
+  h_18676a549cd52a 17-20
+docs/005-panel.md
+  h_18676a549cd52a 36
+docs/006-deployment.md
+  h_18676a549cd52a 81-87,140
+docs/007-architecture.md
+  h_18676a549cd52a 185,286,382-387,434-436
+docs/008-cookbook.md
+  h_18676a549cd52a 79
+examples/profile.cordis.patch.yml
+  h_18676a549cd52a 16-18
+package.json
+  h_18676a549cd52a 20,64
+pnpm-lock.yaml
+  h_18676a549cd52a 14-16,1502-1504,3050-3051
+src/app/api.ts
+  h_18676a549cd52a 4,27-29
+src/app/http.ts
+  h_18676a549cd52a 18,39,125-132,168-181,187-206,215-221
+src/app/setup.ts
+  h_18676a549cd52a 4,67-70,98-103,118-119
+src/app/views/settings.ts
+  h_18676a549cd52a 37-39
+src/client/locales.ts
+  h_18676a549cd52a 34,44,153,766,781-791,797
+src/client/source.tsx
+  h_18676a549cd52a 2-3,6,8,10,67,75-138
+src/deployment.ts
+  h_18676a549cd52a 58-66,83-84,91,98-99,276-285
+src/kv.ts
+  h_18676a549cd52a 58-59
+src/setup.ts
+  h_18676a549cd52a 4,23
+src/sources/host.ts
+  h_18676a549cd52a 17
+src/sources/kind.ts
+  h_18676a549cd52a 76-105,133-134
+src/sources/weixin-api.ts
+  h_18676a549cd52a 1-93
+src/sources/weixin-channel.ts
+  h_18676a549cd52a 1-30
+src/sources/weixin-login.ts
+  h_18676a549cd52a 1-182
+src/sources/weixin-read.ts
+  h_18676a549cd52a 1-64
+src/sources/weixin-trigger.ts
+  h_18676a549cd52a 1-117
+src/sources/weixin.ts
+  h_18676a549cd52a 1-156
+tests/bundle-patch.spec.ts
+  h_18676a549cd52a 32
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 81-82,114-116,146,151-152,261-263,295,297-299,302,324-328,361,366,396,411,437-438
+tests/http.spec.ts
+  h_18676a549cd52a 99-145
+tests/panel-login.spec.tsx
+  h_18676a549cd52a 1-76
+tests/weixin-loop.spec.ts
+  h_18676a549cd52a 1-202
+tests/weixin.spec.ts
+  h_18676a549cd52a 1-279
+tsdown.config.ts
+  h_18676a549cd52a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d68edadf750c00974cfe2d237034a2ce926ebf3a",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
