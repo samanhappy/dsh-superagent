@@ -84,7 +84,7 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
    chmod +x ~/.local/bin/glab-agent
    ```
 
-   The wrapper runs `glab` with that configuration directory; dsh-superagent calls it as `glab` in worker shells and passes `--hostname` for the configured instance. A self-hosted instance works the same way with its hostname.
+   The wrapper runs `glab` with that configuration directory; dsh-superagent calls it as `glab` in worker shells and sets `GITLAB_HOST` to the configured instance. `GITLAB_HOST` is glab's environment override, which every subcommand accepts, so the shim never adds `--hostname` (only some subcommands define it). A self-hosted instance works the same way with its hostname.
 
    Signing in with a token instead of interactively (`glab auth login --hostname <instance> --stdin < token`, or `--token`) stores no username, so the credential helper git asks answers with an empty username and every HTTPS push fails with `HTTP Basic: Access denied`. Add it once with `glab config set user <username> --host <instance>`; the API checks in setup pass either way.
 
@@ -241,8 +241,8 @@ Setup verifies the GitHub repository and the agent's push access, writes the wor
 
 The process environment that setup writes:
 
-- **Command shims** in `<stateDir>/worker-bin`, first on `PATH`: `gh` runs the agent's GitHub CLI, `glab` its GitLab CLI when configured, `lark-cli` the bot's CLI; blocked commands fail. A shim removes its own directory from `PATH` before it runs its target.
-- **git configuration** in `<stateDir>/worker-gitconfig`: replaces the operator's global and system git configuration. It selects the agent CLIs as the github.com and GitLab instance credential helpers, rewrites their SSH addresses to HTTPS and defines Git LFS filters. Personal git settings such as an HTTP proxy do not apply. No commit identity is set here, git never prompts for credentials, and `GH_TOKEN`, `GITHUB_TOKEN`, `GITLAB_TOKEN` and `GITLAB_HOST` are removed.
+- **Command shims** in `<stateDir>/worker-bin`, first on `PATH`: `gh` runs the agent's GitHub CLI, `glab` its GitLab CLI when configured, `lark-cli` the bot's CLI; blocked commands fail. A shim removes its own directory from `PATH` before it runs its target. The `glab` shim sets `GITLAB_HOST` to the configured instance.
+- **git configuration** in `<stateDir>/worker-gitconfig`: replaces the operator's global and system git configuration. It selects the agent CLIs as the github.com and GitLab instance credential helpers, rewrites their SSH addresses to HTTPS and defines Git LFS filters. Personal git settings such as an HTTP proxy do not apply. No commit identity is set here, git never prompts for credentials, and `GH_TOKEN`, `GITHUB_TOKEN`, `GITLAB_TOKEN` and `GITLAB_HOST` are removed (the `glab` shim sets `GITLAB_HOST` itself).
 
 A file in `worker-bin` or `worker-gitconfig` that dsh-superagent did not write stops setup. A Ticket directory inside a git repository whose own configuration adds credentials fails the Ticket.
 

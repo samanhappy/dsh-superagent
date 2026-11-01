@@ -95,11 +95,15 @@ export async function writeEnvironment(deployment: Pick<Deployment, 'stateDir' |
     'for entry in $PATH; do [ "$entry" = "$self" ] || rest="${rest:+$rest:}$entry"; done',
     'set +f', 'unset IFS', 'PATH=$rest', 'export PATH',
   ].join('\n')
-  const run = (program: string, prefix = ''): string => `${withoutShims}\nexec ${shellQuote(program)}${prefix ? ` ${prefix}` : ''} "$@"`
+  const run = (program: string, env: Record<string, string> = {}): string =>
+    `${withoutShims}\n${Object.entries(env).map(([name, value]) => `export ${name}=${shellQuote(value)}\n`).join('')}exec ${shellQuote(program)} "$@"`
   const fail = (message: string): string => `echo ${shellQuote(message)} >&2\nexit 1`
   await shim('gh', run(github.cli))
-  // The instance is passed on every call so a self-hosted GitLab does not fall back to glab's default host.
-  await shim('glab', gitlab ? run(gitlab.cli, `--hostname ${shellQuote(gitlab.host)}`) : fail('glab is unavailable: this installation has no GitLab Source.'))
+  // `GITLAB_HOST` is glab's environment override for the instance. Unlike
+  // `--hostname`, every subcommand accepts it — `--version`, `mr`, `issue` and
+  // `auth status` define no such flag, so passing it as argv breaks plain
+  // `glab` for workers (and for any other plugin that shares this PATH).
+  await shim('glab', gitlab ? run(gitlab.cli, { GITLAB_HOST: gitlab.host }) : fail('glab is unavailable: this installation has no GitLab Source.'))
   await shim('lark-cli', feishu ? run(feishu.cli) : fail('lark-cli is unavailable: this installation has no Feishu bot.'))
   for (const name of new Set(blockedCommands.filter(name => !WORKER_COMMANDS.includes(name)))) {
     await shim(name, fail(`${name} is blocked in this installation; use gh or glab, which act as the deployment's agent accounts.`))

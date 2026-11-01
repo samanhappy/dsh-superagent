@@ -32,13 +32,17 @@ describe('worker shims', () => {
     const { stdout } = await exec('gh', ['api', 'user'], { env: { PATH: path }, timeout: 10_000 })
     expect(JSON.parse(stdout)).toEqual({ login: 'agent-bot', config: `${dir}/agent-config`, path: [join(dir, 'venv'), join(dir, 'real'), '/usr/bin', '/bin'].join(':') })
   })
-  it('runs `glab` through the agent wrapper and gives its GitLab instance the same credential helper', async () => {
-    const glab = program(join(dir, 'glab-agent'), 'echo glab "$@"')
+  it('runs `glab` through the agent wrapper with the instance in GITLAB_HOST, for every subcommand', async () => {
+    // Reject an injected `--hostname`: only some subcommands define that flag,
+    // so the shim must reach the wrapper with the caller's argv untouched.
+    const glab = program(join(dir, 'glab-agent'), 'case " $* " in *" --hostname "*) echo "Unknown flag: --hostname" >&2; exit 1;; esac\necho glab "$GITLAB_HOST" "$@"')
     const deployment = testDeployment({ stateDir: dir, gitlab: { host: 'gitlab.example.com', cli: glab, login: 'agent-bot', id: 7,
       email: '7-agent-bot@users.noreply.gitlab.example.com', projects: ['acme/widgets'] } })
     await writeEnvironment(deployment, [])
     const bin = workerBin(dir)
-    expect((await exec(join(bin, 'glab'), ['api', 'user'])).stdout).toBe('glab --hostname gitlab.example.com api user\n')
+    expect((await exec(join(bin, 'glab'), ['api', 'user'])).stdout).toBe('glab gitlab.example.com api user\n')
+    expect((await exec(join(bin, 'glab'), ['--version'])).stdout).toBe('glab gitlab.example.com --version\n')
+    expect((await exec(join(bin, 'glab'), ['mr', 'list'])).stdout).toBe('glab gitlab.example.com mr list\n')
     const config = readFileSync(workerGitConfig(dir), 'utf8')
     expect(config).toContain('[credential "https://gitlab.example.com"]')
     expect(config).toContain(credentialHelper(glab))
