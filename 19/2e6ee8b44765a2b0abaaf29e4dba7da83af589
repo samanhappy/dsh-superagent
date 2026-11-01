@@ -1,0 +1,24 @@
+cordis.patch.yml
+  h_18676a549cd52a 9-12
+docs/006-deployment.md
+  h_18676a549cd52a 9,76,82
+docs/007-architecture.md
+  h_18676a549cd52a 419
+docs/008-cookbook.md
+  h_18676a549cd52a 344
+examples/profile.cordis.patch.yml
+  h_18676a549cd52a 10-11,13,15,17,19,21
+tests/bundle-patch.spec.ts
+  h_18676a549cd52a 29-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "192e6ee8b44765a2b0abaaf29e4dba7da83af589",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
