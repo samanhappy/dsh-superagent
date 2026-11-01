@@ -1,0 +1,120 @@
+.gitignore
+  h_18676a549cd52a 6
+README.md
+  h_18676a549cd52a 7
+cordis.patch.yml
+  h_18676a549cd52a 13-16
+docs/000-philosophy.md
+  h_18676a549cd52a 19
+docs/001-domain.md
+  h_18676a549cd52a 71,75
+docs/002-authorization.md
+  h_18676a549cd52a 61,71,79
+docs/004-prompts.md
+  h_18676a549cd52a 16
+docs/005-panel.md
+  h_18676a549cd52a 36
+docs/006-deployment.md
+  h_18676a549cd52a 9,24,28,72-90,111,167-168,222-223,240,244-245,251,280,286-289
+docs/007-architecture.md
+  h_18676a549cd52a 252,285-286,356,364,377-380,415-416,617
+docs/008-cookbook.md
+  h_18676a549cd52a 78
+examples/profile.cordis.patch.yml
+  h_18676a549cd52a 13-15
+package.json
+  h_18676a549cd52a 7,19
+prompts/cli.md
+  h_18676a549cd52a 1,6-7
+prompts/worker.md
+  h_18676a549cd52a 5
+scripts/dsh-superagent
+  h_18676a549cd52a 93-94,129
+skills/dsh-superagent-gitlab/SKILL.md
+  h_18676a549cd52a 1-12
+src/app/assessment.ts
+  h_18676a549cd52a 12-13,267,270-275
+src/app/context.ts
+  h_18676a549cd52a 14-15
+src/app/http.ts
+  h_18676a549cd52a 50,102-105,117,162
+src/app/prompts.ts
+  h_18676a549cd52a 26,70,122,139,146,148
+src/app/resources.ts
+  h_18676a549cd52a 6,56,212
+src/app/runtime.ts
+  h_18676a549cd52a 103-104,162-163,185-186,189,229
+src/app/setup.ts
+  h_18676a549cd52a 4,28,54,56,65-66,88-95
+src/app/skill-files.ts
+  h_18676a549cd52a 24
+src/app/source-context.ts
+  h_18676a549cd52a 25-26,43
+src/app/views/sources.ts
+  h_18676a549cd52a 29-30,32
+src/client/client.css
+  h_18676a549cd52a 126-130
+src/client/deployment.tsx
+  h_18676a549cd52a 58-59,68-69
+src/client/locales.ts
+  h_18676a549cd52a 34,37,148-149,467,556-557,737,751-757,762
+src/client/overview.tsx
+  h_18676a549cd52a 27-28
+src/client/source.tsx
+  h_18676a549cd52a 14,19-22,43-48,58-65,76
+src/deployment.ts
+  h_18676a549cd52a 50-56,58-59,65,68-69,119-155
+src/infra/commands.ts
+  h_18676a549cd52a 7,100-127
+src/infra/environment.ts
+  h_18676a549cd52a 18,47,79-80,98,101-102,105,115-119,144-146,148-154
+src/kv.ts
+  h_18676a549cd52a 58-62
+src/setup.ts
+  h_18676a549cd52a 4,7,22-28
+src/sources/gitlab-channel.ts
+  h_18676a549cd52a 1-46
+src/sources/gitlab-read.ts
+  h_18676a549cd52a 1-90
+src/sources/gitlab-trigger.ts
+  h_18676a549cd52a 1-108
+src/sources/gitlab.ts
+  h_18676a549cd52a 1-275
+src/sources/host.ts
+  h_18676a549cd52a 16
+src/sources/kind.ts
+  h_18676a549cd52a 44
+tests/bundle-patch.spec.ts
+  h_18676a549cd52a 31-32
+tests/commands.spec.ts
+  h_18676a549cd52a 56-69
+tests/deployment.spec.ts
+  h_18676a549cd52a 7,19-26,94-113
+tests/environment.spec.ts
+  h_18676a549cd52a 23,35-46,51-52,65,82
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 22,83,118-120,130,254,256,258
+tests/gitlab.spec.ts
+  h_18676a549cd52a 1-199
+tests/panel-eval.spec.tsx
+  h_18676a549cd52a 37
+tests/panel-overview.spec.tsx
+  h_18676a549cd52a 143
+tests/panel-source.spec.tsx
+  h_18676a549cd52a 14,67,96-138,195,234
+tests/runtime.spec.ts
+  h_18676a549cd52a 975,980-981,1007,1009
+tsdown.config.ts
+  h_18676a549cd52a 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5927b4097b1ccf97025b5eae8515966848f9dd08",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
