@@ -18,7 +18,7 @@ function SourceCard({ source, focus }: { source: SourceView; focus?: boolean }) 
   const { running } = usePanelData()
   const { reload } = useSettings()
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const bodyId = `dt-source-${source.id}-body`
   // A link that points at this card opens it, so the setting it needs is on screen.
   useEffect(() => { if (focus) setOpen(true) }, [focus])
