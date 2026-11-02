@@ -1,0 +1,36 @@
+.github/workflows/ci.yml
+  h_18676a549cd52a 1-27
+CODE_OF_CONDUCT.md
+  h_18676a549cd52a 1-48
+CONTRIBUTING.md
+  h_18676a549cd52a 1-63
+NOTICE
+  h_18676a549cd52a 1-50
+README.md
+  h_18676a549cd52a 3-14,20-50,75-83,87
+README.zh-CN.md
+  h_18676a549cd52a 1-86
+SECURITY.md
+  h_18676a549cd52a 1-59
+SETUP.md
+  h_18676a549cd52a 23-24,29,39,44-50,68-70,74,78,80,85,89-90
+docs/006-deployment.md
+  h_18676a549cd52a 84-86
+package.json
+  h_18676a549cd52a 3,7-11
+tests/docs.spec.ts
+  h_18676a549cd52a 9
+tests/runtime.spec.ts
+  h_18676a549cd52a 39-41,972,992
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e25076def6566809c2b955ddc1b6b988d3bbf76",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
