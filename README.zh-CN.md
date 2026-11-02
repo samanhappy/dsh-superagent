@@ -12,7 +12,7 @@
 > 编码 agent 完成，并非生产就绪的软件。本 fork 不会把它变成经过加固的服务：它只是朝着「一个团队能每天使用」
 > 的方向走了一步，并继承随之而来的限制。
 
-dsh-superagent 是一个面向单个 GitHub 仓库的主动式编码 agent，以 [DeepSeek Harness](https://www.deepseek.com/en/harness/) 的 bundle 形式交付。它监听 GitHub，也可选择监听 GitLab、飞书、PingCode、企业微信和微信。当允许的人向它提出工作时，它会建立工作项，在自己的 agent 会话与目录中执行，并在原会话中作答，例如提交一个 pull request。Web 面板展示哪些事情需要人来处理。
+dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，以 [DeepSeek Harness](https://www.deepseek.com/en/harness/) 的 bundle 形式交付。它监听 GitHub，也可选择监听 GitLab、飞书、PingCode、企业微信和微信。当允许的人向它提出工作时，它会建立工作项，在自己的 agent 会话与目录中执行，并在原会话中作答，例如提交一个 pull request。Web 面板展示哪些事情需要人来处理。
 
 它同时也是一种与 agent 协作的方式：**尽可能少占用人的注意力，尽可能多地交付价值。** 能替整个团队行动的 agent，也可能浪费整个团队的注意力，所以它只在被要求时、或团队写下的规则允许时行动，只在有人必须行动或能用到结果时发言。[docs/000-philosophy.md](docs/000-philosophy.md) 解释了这一原则，以及它对运维者提出了什么要求。
 

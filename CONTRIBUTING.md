@@ -43,10 +43,11 @@ directly; the tests mock it.
 
 ## Branches, commits and pull requests
 
-- Open a pull request against `custom` unless a maintainer asks for another branch. `main` mirrors the upstream
-  import and is not where development happens.
-- Keep commits focused and use the message prefixes already in the history: `feat:`, `fix:`, `docs:`, `test:`,
-  `refactor:`. A commit message explains the reason, not just the diff.
+- Open a pull request against `main`. A `custom` branch also exists in this repo; do not open new work against it
+  unless a maintainer asks.
+- Keep commits focused and start the subject with a type: `feat:`, `fix:`, `docs:`, `test:`, `refactor:` or
+  `chore:`, with an optional scope such as `fix(feishu):`. A subject with no type is acceptable when none fits. A
+  commit message explains the reason, not just the diff.
 - A pull request says what changed, why, and what you ran. `pnpm check` must pass; if it cannot run in your
   environment, say which part you did run.
 - If your change depends on an upstream change that is not merged here yet, say so and link it.
