@@ -1,0 +1,52 @@
+docs/003-execution.md
+  h_18676a549cd52a 128-129
+docs/006-deployment.md
+  h_18676a549cd52a 309
+docs/007-architecture.md
+  h_18676a549cd52a 77
+docs/008-cookbook.md
+  h_18676a549cd52a 253-254
+prompts/handoff-orchestrator.md
+  h_18676a549cd52a 5
+prompts/replies.md
+  h_18676a549cd52a 1-2
+src/app/tools/main.ts
+  h_18676a549cd52a 225,229
+src/app/views/records.ts
+  h_18676a549cd52a 196-201,205,208,211,213-214
+src/client/client.css
+  h_18676a549cd52a 63
+src/client/locales.ts
+  h_18676a549cd52a 734
+src/client/rows.tsx
+  h_18676a549cd52a 3,78-84,101-105
+src/client/thread.tsx
+  h_18676a549cd52a 7-8,40
+src/core/engine.ts
+  h_18676a549cd52a 130-131,133
+src/core/errors.ts
+  h_18676a549cd52a 33
+src/core/replies.ts
+  h_18676a549cd52a 12-13,17,23-25,31-34,36,77-79,84-86
+tests/core-engine.spec.ts
+  h_18676a549cd52a 1051-1074
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 216-217
+tests/panel-trigger.spec.tsx
+  h_18676a549cd52a 7,30-43
+tests/runtime.spec.ts
+  h_18676a549cd52a 356-370
+tests/views.spec.ts
+  h_18676a549cd52a 101-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d74dc6e0e1a058cea793aeef4fbb95e9678f168",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
