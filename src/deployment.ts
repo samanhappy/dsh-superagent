@@ -13,9 +13,25 @@ import { sameName } from './infra/text.ts'
 
 const reason = (error: unknown): string => error instanceof Error ? error.message : String(error)
 const absolute = (description: string) => s.string().pattern(/^\//).description(`${description} Absolute path.`)
+/**
+ * Launcher-supplied profile facts: the profile's name and directory and the DeepSeek Harness home the launcher resolved.
+ * The loader provides them to every plugin of a profile composition; a plain `dsh` tree has none.
+ */
+export interface ProfileFacts {
+  name: string
+  dir: string
+  home: string
+}
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** The launcher's profile facts, present while this composition runs a DSH profile. */
+    profileContext?: ProfileFacts
+  }
+}
 /** Plugin configuration of the dsh-superagent entry. Volatile fields apply without a restart because dsh-superagent reads them on each use; changing `stateDir` remounts the plugin. */
 export const Config = s.object({
-  stateDir: absolute('Directory for the database, locks, worker shims, the agent\'s git configuration and, by default, the ticket directories.').required(),
+  stateDir: absolute('Directory for the database, locks, worker shims, the agent\'s git configuration and, by default, the ticket directories.')
+    .description('Omitted, it is `state/superagent` under the DeepSeek Harness home.'),
   promptMaxChars: s.number().min(LIMITS.promptMaxChars.min).max(LIMITS.promptMaxChars.max).step(1).default(100000)
     .description('Largest saved prompt configuration, in characters.').volatile(),
   admissionContextMaxPages: s.number().min(LIMITS.admissionContextMaxPages.min).max(LIMITS.admissionContextMaxPages.max).step(1).default(10)
@@ -37,11 +53,22 @@ const MOVED: Record<string, string> = {
 }
 
 /** Read machine settings and reject unknown configuration keys (naming where deprecated keys moved). */
-export function machineOf(config: DeploymentConfig): Machine {
+export function machineOf(config: DeploymentConfig, profile?: ProfileFacts): Machine {
   const unknown = Object.keys(config).filter(key => !(key in (Config.dict ?? {})))
   if (unknown.length) throw new Error(`dsh-superagent configuration has keys it does not use: ${unknown.map(key => MOVED[key] ? `${key} (now ${MOVED[key]})` : key).join(', ')}; docs/006-deployment.md lists the keys`)
-  const { stateDir, promptMaxChars, admissionContextMaxPages, admissionContextTimeoutMs } = config
-  return { stateDir, promptMaxChars, admissionContextMaxPages, admissionContextTimeoutMs }
+  const { promptMaxChars, admissionContextMaxPages, admissionContextTimeoutMs } = config
+  return { stateDir: stateDirectory(config, profile), promptMaxChars, admissionContextMaxPages, admissionContextTimeoutMs }
+}
+
+/**
+ * The state directory this entry uses: the configured absolute path, or `state/superagent` under the harness home the
+ * launcher resolved. A profile composition always names that home, so an entry without configuration starts; a
+ * composition without a profile has no home to default to and must name the directory.
+ */
+export function stateDirectory(config: DeploymentConfig, profile: ProfileFacts | undefined): string {
+  if (config.stateDir !== undefined) return config.stateDir
+  if (profile === undefined) throw new Error('dsh-superagent has no stateDir and runs outside a profile, so there is no DeepSeek Harness home to default it to; set config.stateDir (docs/006-deployment.md)')
+  return join(profile.home, 'state', 'superagent')
 }
 
 export const GithubAccountsSchema = z.object({

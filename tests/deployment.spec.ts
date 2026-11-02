@@ -48,13 +48,16 @@ afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 vi.setConfig({ testTimeout: 30_000 })
 
 describe('configuration schema', () => {
-  it('requires only the state directory and reads the editable fields through references', () => {
-    expect(() => Config({})).toThrow('stateDir')
-    const read = machineOf(Config({ stateDir: join(dir, 'state') }))
+  const profile = () => ({ name: 'desktop', dir: join(dir, 'dsh', 'profiles', 'desktop'), home: join(dir, 'dsh') })
+  it('defaults an unset state directory under the harness home and reads the editable fields through references', () => {
+    const read = machineOf(Config({}), profile())
     // Limits are volatile references that the loader updates in place and callers read when used.
     expect({ ...read, promptMaxChars: read.promptMaxChars.get(), admissionContextMaxPages: read.admissionContextMaxPages.get(),
       admissionContextTimeoutMs: read.admissionContextTimeoutMs.get() })
-      .toEqual({ stateDir: join(dir, 'state'), promptMaxChars: 100000, admissionContextMaxPages: 10, admissionContextTimeoutMs: 15000 })
+      .toEqual({ stateDir: join(dir, 'dsh', 'state', 'superagent'), promptMaxChars: 100000, admissionContextMaxPages: 10, admissionContextTimeoutMs: 15000 })
+    // A configured directory wins over the default; a composition without a profile has no home to default to.
+    expect(machineOf(Config({ stateDir: join(dir, 'state') }), profile()).stateDir).toBe(join(dir, 'state'))
+    expect(() => machineOf(Config({}))).toThrow('stateDir')
     expect(() => Config(minimal({ stateDir: 'relative/dir' }))).toThrow()
     expect(() => Config(minimal({ stateDir: '~/dir' }))).toThrow()
   })
