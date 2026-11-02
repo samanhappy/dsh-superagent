@@ -81,7 +81,9 @@ The Source opens one long connection per bot and reconnects with backoff. WeCom 
 
 1. Open the WeChat Source's card under **Settings → Sources**, choose **扫码登录**, and scan the code with WeChat on a phone; confirm on the phone, and the token is saved and dsh-superagent restarts.
 
-The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct messages and replies in the same conversation. It is a personal WeChat bot built on Tencent's bot API: it sees only what people send it, keeps no readable history (assessments read the window this process remembered), and sends text only. A token the backend rejects with `-14` shows as the Source's health, and the Source stops for an hour so the account can be logged in again; setup only checks that a token is saved, so a wrong token never blocks the rest of dsh-superagent.
+The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct messages and replies in the same conversation. It is a personal WeChat bot built on the bot backend that Tencent publishes as the MIT-licensed `@tencent-weixin/openclaw-weixin` package: it sees only what people send it, keeps no readable history (assessments read the window this process remembered), and sends text only. A token the backend rejects with `-14` shows as the Source's health, and the Source stops for an hour so the account can be logged in again; setup only checks that a token is saved, so a wrong token never blocks the rest of dsh-superagent.
+
+> **Unofficial, and at the operator's risk.** This Source is not produced, endorsed or supported by Tencent, and the iLink endpoints are published with Tencent's `openclaw-weixin` plugin rather than as a stable, officially documented API: they can change or be withdrawn without notice, and fixes here are best effort. Scanning the code binds the bot to that WeChat account, so use a dedicated test account — not a personal or company primary account. Tencent may restrict an account whose traffic it considers outside its terms, and the saved token is a credential that grants access to that account.
 
 ### Agent GitLab account (optional)
 
