@@ -4,8 +4,8 @@ import { ApiError, usePoll, type ThreadPageView, type TriggerRow } from './api.t
 import { Button, DisclosureRow, Icon, Tag } from './controls.tsx'
 import { decisionMark } from './marks.ts'
 import { useAction, usePanel } from './provider.tsx'
-import { DecisionLine, Earlier, TicketLine, automatedRuns } from './rows.tsx'
-import { actorName, errorText, readableMarkers, reasonLabel, valueLabel, when, type T } from './text.ts'
+import { DecisionLine, Earlier, Sender, TicketLine, automatedRuns } from './rows.tsx'
+import { errorText, readableMarkers, reasonLabel, valueLabel, when, type T } from './text.ts'
 import { ActionLink, ClampText, ConfirmButton, Hint, LoadState, PageHead, Section, When } from './widgets.tsx'
 
 /** Disposition tags for a Trigger; omits `ignore` (the common case) and suppresses fanout tags when every target Ticket is already listed in `subscribed`. */
@@ -37,7 +37,7 @@ function TriggerItem({ trigger, earlier, target, subscribed, requeue }: {
   }
   return <li id={`trigger-${trigger.id}`} className={`dt-event${target === trigger.id ? ' dt-highlight' : ''}${trigger.human ? ''
     : ' dt-event-quiet'}`} ref={scroll}>
-    <div className="dt-event-foot"><strong className="dt-event-actor">{actorName(t, trigger.actor)}</strong><When
+    <div className="dt-event-foot"><strong className="dt-event-actor"><Sender actor={trigger.actor} /></strong><When
       at={trigger.at} /></div>
     <ClampText text={readableMarkers(t, trigger.text || trigger.preview)} />
     <Earlier items={earlier} />

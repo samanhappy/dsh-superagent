@@ -353,6 +353,21 @@ it('records worker reports, binds the task PR, ends the ticket on ready without 
   expect(notice ?? runtime.store.replyStatus(key('pr-terminal', '42', 'feishu', JSON.stringify({ chatId: CHAT, messageId: 'om_1' }), 'merged'))).toBeTruthy()
 })
 
+it('sends one failure notice to the conversation a ticket started in, and only for a failed report', async () => {
+  const { ticket } = await acceptedTicket()
+  await expect(runTool(runtime.masterId, 'orchestrator_reply', { ticket_id: ticket.id, purpose: 'failure', text: 'x' }))
+    .rejects.toThrow('A failure notice needs an open ticket whose latest report is failed')
+  await runTool(`worker-${ticket.id}`, 'orchestrator_report', { state: 'failed', summary: 'The prepare command failed: fatal: no such clone' })
+  expect(relays(runtime.masterId).at(-1)).toMatchObject({ kind: 'worker_report', state: 'failed' })
+  const failed = runtime.store.tickets.get(ticket.id)!.assignments.at(-1)!.report!
+  expect(await runTool(runtime.masterId, 'orchestrator_reply', { ticket_id: ticket.id, purpose: 'failure', text: '这条请求没做成：执行环境准备失败，修好后我再试。' }))
+    .toEqual({ status: 'sent' })
+  expect(runtime.store.replyStatus(key('failure-reply', ticket.id, failed.at))).toBe('sent')
+  // The same failed report is already told: another wording keeps the first notice.
+  await runTool(runtime.masterId, 'orchestrator_reply', { ticket_id: ticket.id, purpose: 'failure', text: '换个说法' })
+  expect(runtime.store.receipts.get(key('failure-reply', ticket.id, failed.at))!.text).toBe('这条请求没做成：执行环境准备失败，修好后我再试。')
+})
+
 it('lists each ticket with the Threads it subscribes to, as their Sources describe them', async () => {
   const { sessionId, ticket } = await acceptedTicket()
   await runTool(sessionId, 'orchestrator_report', { state: 'progress', summary: 'pr open', pr_number: 42 })

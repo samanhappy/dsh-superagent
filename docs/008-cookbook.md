@@ -250,6 +250,8 @@ Execution settings show declared `variables` beside the prepare command even whe
 
 The prepare command reads environment variables; the worker reads their values in its instructions. Use the `DSH_SUPERAGENT_<KIND>_…` prefix, return an empty value for Tickets from another Source, and never include credentials.
 
+A deployment that accepts work from several Sources must keep its one prepare command valid for a Ticket from each of them: a variable of the Source that did not start the Ticket is empty, so a command that builds a clone path from it alone fails for IM-origin Tickets. Name the repository explicitly, or make the expansion fall back to a configured default, and check that a path built from an empty value cannot silently point at the wrong checkout.
+
 ### 9. The plugin entry and its loop
 
 ```ts

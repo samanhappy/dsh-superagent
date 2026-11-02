@@ -125,6 +125,8 @@ A passing failure of the model provider or the network, an HTTP 408, 429 or 5xx 
 
 Once failed, CI and bot messages are recorded on it, but they are not delivered and do not wake the Session.
 
+The main Session can send one failure notice to the conversation the Ticket started in, naming what failed and what happens next: one notice covers one failed report, so a retry that fails again is a new notice. A failed report that asks a question goes through attention instead, and progress or a `blocked` report without a question stays internal.
+
 Its tools stay available, so a person can continue in the Session directly.
 
 A launch that failed is not tried again on its own.

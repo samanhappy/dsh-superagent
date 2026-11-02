@@ -1048,6 +1048,30 @@ describe('replies', () => {
     expect(h.engine.reply({ purpose: 'result', ticketId, text: 'Done' })).toMatchObject({ status: 'pending' })
     expect(h.outbox.at(-1)!.channel).toEqual(trigger('1').channel)
   })
+  it('sends one failure notice to the ticket\'s starting conversation, after a failed report only', () => {
+    const h = harness()
+    const ticketId = accepted(h).ticketId!
+    expect(() => h.engine.reply({ purpose: 'failure', ticketId, text: 'x' })).toThrow(new UserError('notFailed'))
+    h.engine.report(ticketId, { state: 'progress', summary: 'working' })
+    expect(() => h.engine.reply({ purpose: 'failure', ticketId, text: 'x' })).toThrow(new UserError('notFailed'))
+    h.engine.report(ticketId, { state: 'blocked', summary: 'stuck' })
+    expect(() => h.engine.reply({ purpose: 'failure', ticketId, text: 'x' })).toThrow(new UserError('notFailed'))
+    h.engine.report(ticketId, { state: 'failed', summary: 'The prepare command failed: fatal: no such clone' })
+    const failed = h.repo.tickets.get(ticketId)!.assignments.at(-1)!.report!
+    expect(h.engine.reply({ purpose: 'failure', ticketId, text: '没做成：执行环境准备失败，修好后我再试。' }))
+      .toEqual({ id: key('failure-reply', ticketId, failed.at), status: 'pending', reused: false })
+    expect(h.outbox.at(-1)).toMatchObject({ channel: trigger('1').channel, text: '没做成：执行环境准备失败，修好后我再试。', kind: 'reply', ticketId })
+    // One notice covers one failed report: another wording reuses the queued message.
+    expect(h.engine.reply({ purpose: 'failure', ticketId, text: '另一句' })).toMatchObject({ reused: true })
+    expect(h.outbox.filter(message => message.kind === 'reply')).toHaveLength(1)
+    // A failure with an open question is attention, not a failure notice.
+    const asking = accepted(h, '4', 't4').ticketId!
+    h.engine.report(asking, { state: 'failed', summary: 'The prepare command failed', question: 'Which repository?' })
+    expect(() => h.engine.reply({ purpose: 'failure', ticketId: asking, text: 'x' })).toThrow(new UserError('notFailed'))
+    // A ready report is a result, not a failure notice; the ticket ends after it.
+    h.engine.report(ticketId, { state: 'ready', summary: 'Done' })
+    expect(() => h.engine.reply({ purpose: 'failure', ticketId, text: 'x' })).toThrow(new UserError('notFailed'))
+  })
 })
 describe('ticket commands', () => {
   it('ends a ticket by the same rule on a close and on a ready report: once no PR it opened is open, as the latest of them ended', () => {

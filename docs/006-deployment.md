@@ -306,6 +306,7 @@ Setup problems appear on the overview with a link to the fix, in the panel's lan
 | `@… cannot read …` or `@… cannot push to …` | Give the agent account write access to the repository |
 | `The GitHub Source names no repository.` | Set the repository, `owner/name`, on the GitHub card |
 | A Ticket fails with `The prepare command failed: …` | The output names the cause, such as a wrong clone path; fix the command, then retry the Ticket |
+| A prepare command reads a Source variable that is empty | A variable is set only while the Ticket comes from that Source; a Ticket from another Source, such as an IM, sees an empty value. Do not build a path from it alone: name the repository explicitly or give the expansion a default, and test the command for a Ticket from each Source that can accept work |
 | `git does not read the credential configuration dsh-superagent writes for github.com or the GitLab instance` | Install git 2.32 or later |
 | A Ticket fails with `The git configuration of the repository in … sets …` | Remove the named credential or `http.*.extraheader` settings from the clone's `.git/config` |
 | `… was not written by dsh-superagent` | Move the named file out of `<stateDir>/worker-bin` or `<stateDir>/worker-gitconfig`, or choose another `stateDir` |

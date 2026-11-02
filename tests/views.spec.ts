@@ -98,6 +98,22 @@ it('classifies a Thread by what it is doing, and offers a filtered Trigger of a 
   expect(rows[0]!.actor.name).toEqual({ zh: 'Alice', en: 'Alice' })
 })
 
+it('names the senders a Decision judged once each, with the id its Source gave, and no automated Trigger', () => {
+  const host = views()
+  store.threads.save({ key: 'feishu:oc_1:om_root', ref: { source: 'feishu', id: 'oc_1:om_root' }, createdAt: at, subscriptions: [], correlated: [],
+    pending: [], meta: {} })
+  store.triggers.save(message('e1', { source: 'feishu', id: 'ou_alice' }))
+  store.triggers.save(message('e2', { source: 'feishu', id: 'ou_alice' }))
+  store.triggers.save(message('e3', { source: 'feishu', id: 'ou_bob' }))
+  store.triggers.save(message('e4', { source: 'feishu', id: '' }, false))
+  store.decisions.save({ id: 'd1', evalId: 'e', threadKey: 'feishu:oc_1:om_root', triggerIds: ['e1', 'e2', 'e3', 'e4'], policyVersion: 'v',
+    at, kind: 'ignore', reason: [{ code: 'not_a_member' }], strength: 'inferred' })
+  const decisions = threadDetail(host, 'feishu:oc_1:om_root', undefined, 50)!.decisions
+  expect(decisions[0]!.actors).toEqual([{ source: 'feishu', id: 'ou_alice', name: { zh: 'Alice', en: 'Alice' } },
+    { source: 'feishu', id: 'ou_bob', name: feishuKind.policy!.unnamed!.person }])
+  expect(decisions[0]!.preview).toBe('message e1 / message e2 / message e3 / message e4')
+})
+
 it('states each Source by the first state that holds', () => {
   const host = views()
   const states = (setup: Parameters<typeof sourcesStatus>[2], health: Parameters<typeof sourcesStatus>[1] = {}) =>

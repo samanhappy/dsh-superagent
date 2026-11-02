@@ -127,10 +127,10 @@ export class Engine {
   requestStatus(ticketId: string): boolean { return this.repo.atomic(() => this.tickets.requestStatus(ticketId)) }
   /**
    * Queue a message for the Channel its purpose names: an acknowledgement or an answer goes where the person's message was
-   * written, attention where the message that raised the question was, else, like a result, to the conversation the ticket
-   * started in. A message queued before is not queued again (see `Replies.reply`).
+   * written, attention where the message that raised the question was, else, like a result or a failure notice, to the
+   * conversation the ticket started in. A message queued before is not queued again (see `Replies.reply`).
    * @throws UserError when the ticket or trigger is unknown or the purpose's rule refuses it, such as a result of a ticket that
-   * is not ready, completed, merged, or dropped.
+   * is not ready, completed, merged, or dropped, or a failure notice of a ticket with no failed report.
    */
   reply(request: ReplyRequest): Reply { return this.repo.atomic(() => this.replies.reply(request)) }
 

@@ -60,6 +60,7 @@
 .dt-event.dt-highlight { background: var(--dsw-alias-interactive-bg-hover); border-radius: 8px; padding-inline: 8px; margin-inline: -8px; }
 .dt-event-text { margin: 0; font-size: 13px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dt-event-actor { font-weight: 500; color: var(--dsw-alias-label-secondary); }
+.dt-sender-id { margin-left: 6px; font-weight: 400; color: var(--dsw-alias-label-caption); }
 .dt-event-quiet .dt-event-text { color: var(--dsw-alias-label-tertiary); }
 .dt-flow { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
 .dt-clamp-8 { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
