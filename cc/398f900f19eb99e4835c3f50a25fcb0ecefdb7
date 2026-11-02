@@ -1,0 +1,24 @@
+docs/006-deployment.md
+  h_18676a549cd52a 144,149-150
+examples/profile.cordis.patch.yml
+  h_18676a549cd52a 9-11
+src/deployment.ts
+  h_18676a549cd52a 16-30,33-34,56,59-71
+src/index.ts
+  h_18676a549cd52a 11-12
+tests/deployment.spec.ts
+  h_18676a549cd52a 51-53,57-60
+tests/index.spec.ts
+  h_18676a549cd52a 16,25,44-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc398f900f19eb99e4835c3f50a25fcb0ecefdb7",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
