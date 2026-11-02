@@ -1,0 +1,38 @@
+AGENTS.md
+  h_18676a549cd52a 1-25
+CONTRIBUTING.md
+  h_18676a549cd52a 46-50
+README.md
+  h_18676a549cd52a 16
+README.zh-CN.md
+  h_18676a549cd52a 15
+docs/agents/architecture.md
+  h_18676a549cd52a 1-28
+docs/agents/documentation.md
+  h_18676a549cd52a 1-24
+docs/agents/git-workflow.md
+  h_18676a549cd52a 1-23
+docs/agents/sources.md
+  h_18676a549cd52a 1-26
+docs/agents/testing.md
+  h_18676a549cd52a 1-20
+docs/agents/typescript.md
+  h_18676a549cd52a 1-28
+locale/en.json
+  h_18676a549cd52a 4
+locale/zh.json
+  h_18676a549cd52a 4
+package.json
+  h_18676a549cd52a 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c8582f40345195752b6e290b43006ad89509ec6",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
