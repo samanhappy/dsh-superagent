@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SENSITIVE_ENV_PATTERN, type SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
-import { GIT_LOCATION, agentVariables, credentialHelper, runAsWorker, verifyDirectory, withoutDirectory, workerBin, workerGitConfig, writeEnvironment }
+import { GIT_LOCATION, WORKER_SHELL, agentVariables, credentialHelper, runAsWorker, verifyDirectory, withoutDirectory, workerBin, workerGitConfig, writeEnvironment }
   from '../src/infra/environment.ts'
 import { CliError } from '../src/infra/commands.ts'
 import { testDeployment } from './fixtures/deployment.ts'
@@ -55,18 +55,39 @@ describe('worker shims', () => {
     await expect(exec(join(bin, 'glab'), ['api', 'user'])).rejects.toMatchObject({ code: 1, stderr: 'glab is unavailable: this installation has no GitLab Source.\n' })
     await expect(exec(join(bin, 'personal-gh'), [])).rejects.toMatchObject({ code: 1, stderr: "personal-gh is blocked in this installation; use gh or glab, which act as the deployment's agent accounts.\n" })
   })
-  it('keep `gh` and `lark-cli` working, and shim no `git`, when the blocked commands name the commands workers need', async () => {
+  it('keep `gh`, `lark-cli` and the `git` shim working when the blocked commands name the commands workers need', async () => {
     const gh = program(join(dir, 'gh-agent'), 'echo gh "$@"'), lark = program(join(dir, 'lark-bot'), 'echo lark "$@"')
     const base = testDeployment()
     await writeEnvironment(testDeployment({ stateDir: dir, github: { ...base.github, cli: gh }, feishu: { ...base.feishu!, cli: lark } }), ['gh', 'git', 'lark-cli'])
     const bin = workerBin(dir)
     expect([(await exec(join(bin, 'gh'), ['api', 'user'])).stdout, (await exec(join(bin, 'lark-cli'), ['im'])).stdout]).toEqual(['gh api user\n', 'lark im\n'])
-    expect(readdirSync(bin)).not.toContain('git')
+    expect(readdirSync(bin)).toContain('git')
+  })
+  it('keeps the deployment\'s git configuration in an Executor Session\'s shell and gives every other shell the operator\'s own', async () => {
+    const home = join(dir, 'home'); mkdirSync(home)
+    writeFileSync(join(home, '.gitconfig'), '[alias]\n\tbr = branch\n')
+    const deployment = testDeployment({ stateDir: dir })
+    await writeEnvironment(deployment, [])
+    const bin = workerBin(dir)
+    // The host's process environment points git at the agent's configuration; the marker is what an Executor Session's shell has.
+    const env = { PATH: [bin, '/usr/bin', '/bin'].join(':'), HOME: home, GIT_CONFIG_GLOBAL: workerGitConfig(dir), GIT_CONFIG_NOSYSTEM: '1' }
+    const git = (extra: Record<string, string> = {}, args: string[] = ['config', '--get', 'alias.br']) => exec(join(bin, 'git'), args, { env: { ...env, ...extra } })
+    expect((await git()).stdout.trim()).toBe('branch')
+    await expect(git({ [WORKER_SHELL]: '1' })).rejects.toMatchObject({ code: 1 })
+    expect((await git({ [WORKER_SHELL]: '1' }, ['config', '--show-origin', '--get-all', 'credential.https://github.com.helper'])).stdout.trim())
+      .toBe(`file:${workerGitConfig(dir)}\t${credentialHelper(deployment.github.cli)}`)
+  })
+  it('restores the operator\'s own git configuration file outside an Executor Session\'s shell', async () => {
+    const operator = join(dir, 'operator-gitconfig')
+    writeFileSync(operator, '[alias]\n\tbr = branch\n')
+    await writeEnvironment(testDeployment({ stateDir: dir }), [], { GIT_CONFIG_GLOBAL: operator, GIT_CONFIG_NOSYSTEM: '1' })
+    const env = { PATH: [workerBin(dir), '/usr/bin', '/bin'].join(':'), HOME: dir, GIT_CONFIG_GLOBAL: workerGitConfig(dir), GIT_CONFIG_NOSYSTEM: '1' }
+    expect((await exec(join(workerBin(dir), 'git'), ['config', '--get', 'alias.br'], { env })).stdout.trim()).toBe('branch')
   })
   it('replace only what dsh-superagent wrote and refuse anything else in its places', async () => {
     await writeEnvironment(testDeployment({ stateDir: dir }), ['old-cli'])
     await writeEnvironment(testDeployment({ stateDir: dir }), [])
-    expect(readdirSync(workerBin(dir)).sort()).toEqual(['gh', 'glab', 'lark-cli'])
+    expect(readdirSync(workerBin(dir)).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli'])
     // A file that merely contains the marker on a later line, a symlink to a shim, and a foreign gitconfig are all rejected.
     writeFileSync(join(workerBin(dir), 'notes'), `notes\nmore\n${readFileSync(join(workerBin(dir), 'gh'), 'utf8').split('\n')[1]}\n`)
     await expect(writeEnvironment(testDeployment({ stateDir: dir }), [])).rejects.toThrow(`${join(workerBin(dir), 'notes')} was not written by dsh-superagent`)
@@ -83,7 +104,7 @@ describe('worker shims', () => {
     const legacy = (file: string, name: string) => writeFileSync(file, readFileSync(file, 'utf8').replace('Written by dsh-superagent', `Written by ${name}`))
     legacy(join(workerBin(dir), 'old-cli'), 'dsh-tag'); legacy(join(workerBin(dir), 'older-cli'), 'dsh-freelancer'); legacy(workerGitConfig(dir), 'dsh-go')
     await writeEnvironment(testDeployment({ stateDir: dir }), [])
-    expect(readdirSync(workerBin(dir)).sort()).toEqual(['gh', 'glab', 'lark-cli'])
+    expect(readdirSync(workerBin(dir)).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli'])
     expect(readFileSync(workerGitConfig(dir), 'utf8')).toContain('Written by dsh-superagent')
   })
 })
@@ -111,6 +132,17 @@ describe('agent git configuration', () => {
     await git('-C', 'repo', '-c', 'user.name=Alice', '-c', 'user.email=alice@example.com', 'commit', '--allow-empty', '-q', '-m', 'with identity')
     expect(await git('-C', 'repo', 'log', '-1', '--format=%an <%ae> / %cn <%ce>')).toBe('Alice <alice@example.com> / Alice <alice@example.com>')
   })
+})
+
+it('marks every command it runs as a worker\'s, so a `git` reached through the shims keeps the agent\'s configuration', async () => {
+  let spawned: Record<string, string> | undefined
+  const fake = { spawn: (spec: { env: Record<string, string> }) => {
+    spawned = spec.env
+    const reader = (text: string) => ({ readFrom: () => ({ text, nextOffset: text.length, lossy: false }) })
+    return { done: Promise.resolve({ exitCode: 0, signal: null }), collected: { stdout: reader(''), stderr: reader('') } }
+  } } as unknown as SubprocessRuntime
+  await runAsWorker(fake, ['git', 'config', '--get', 'alias.br'], dir, new AbortController().signal, { EXTRA: 'value' })
+  expect(spawned).toMatchObject({ [WORKER_SHELL]: '1', EXTRA: 'value' })
 })
 
 it('fails instead of asking the operator\'s askpass helpers when the agent\'s credential helper has no answer', async () => {

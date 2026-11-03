@@ -4,10 +4,12 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { MessageId } from '@deepseek-ai/dsh-llm'
 import { scopeParentOf } from '@deepseek-ai/dsh-scope'
 import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import { dirname } from 'node:path'
 import { z } from 'zod'
 import { key, liveTicket, type Ticket } from '../core/index.ts'
 import { mandateInstructions, ticketOfSession } from '../executor/dsh.ts'
+import { WORKER_SHELL } from '../infra/environment.ts'
 import type { HealthEntry } from '../infra/health.ts'
 import { AgentDelivery, messageId } from './delivery.ts'
 import type { Effects } from './effects.ts'
@@ -46,6 +48,13 @@ interface SessionBinding { disposers: (() => void)[]; scope?: Context; skills?: 
 
 /** The agent presets Executor Sessions and the main Session are created with, which the bundle's patch defines. */
 export const WORKER_PRESET = 'dsh-superagent-worker', ROUTER_PRESET = 'dsh-superagent-router'
+/**
+ * DSH's managed `DSH_*` shell environment registry (`ctx.shellEnv`), which the shell tools require and `Sessions` adds one
+ * fact to. It is read through a service lookup so the bundle needs no dependency on the package that provides it.
+ */
+interface ShellEnvironments {
+  register(contributor: { name: string; variables: Record<string, { description: string }>; resolve(execution: ToolExecution): Record<string, string> }): () => void
+}
 declare module '@deepseek-ai/cordis' {
   interface Events {
     /** DSH's agent preset registry selected `agentPreset` for a Session. */
@@ -133,6 +142,28 @@ export class Sessions {
     ctx.on('agent/status', ({ agent, status }) => {
       if (status === 'idle' && !this.host.closing()) { this.retryHealth.clear(agent.id); this.updateModelHealth() }
     })
+    // Mark the shells of Executor Sessions and their subagents, the only shells whose git keeps the deployment's agent
+    // configuration; the `git` shim in `worker-bin` gives every other shell the operator's own configuration back.
+    ctx.inject(['shellEnv'], child => {
+      const shellEnv = child.get('shellEnv') as ShellEnvironments | undefined
+      if (!shellEnv) return
+      child.effect(() => shellEnv.register({
+        name: 'dsh-superagent',
+        variables: { [WORKER_SHELL]: { description: 'Set in an Executor Session\'s shell, whose git uses the deployment\'s agent configuration.' } },
+        resolve: (execution: ToolExecution): Record<string, string> => execution.agent && this.workerSession(execution.agent) ? { [WORKER_SHELL]: '1' } : {},
+      }))
+    })
+  }
+  /** Whether `agent` is an Executor Session or a subagent of one, whose shells run the deployment's agent git configuration. */
+  private workerSession(agent: Agent): boolean {
+    let current: Agent | undefined = agent
+    // A subagent's parent may be another subagent; the worker, a `worker-` Session, is a few levels up.
+    for (let depth = 0; current !== undefined && depth < 9; depth++) {
+      if (ticketOfSession(current.id) !== undefined) return true
+      const parent: SessionId | undefined = current.session.header.parentSession
+      current = parent === undefined ? undefined : this.ctx.agents.get(parent)
+    }
+    return false
   }
   /** Resolves or creates session `id` in workspace `cwd`, initializes its role model, decorates it with prompts/skills/tools, sets `danger-full-access` permissions, and renames it to `title`. */
   async ensure(id: string, cwd: string, title: string, role: 'orchestrator' | 'worker'): Promise<Agent> {

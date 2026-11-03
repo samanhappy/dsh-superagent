@@ -28,7 +28,7 @@ import { feishuChannel } from '../src/sources/feishu-trigger.ts'
 import { commentTrigger, githubChannel } from '../src/sources/github-trigger.ts'
 import { IM_WORDS } from '../src/infra/text.ts'
 import { observePull, pullOf } from '../src/sources/github-pull.ts'
-import { credentialHelper, workerGitConfig } from '../src/infra/environment.ts'
+import { WORKER_SHELL, credentialHelper, workerGitConfig } from '../src/infra/environment.ts'
 import { policyHistory } from '../src/app/settings-history.ts'
 import { overview } from '../src/app/views/overview.ts'
 import { preview, readable } from '../src/app/views/text.ts'
@@ -78,6 +78,8 @@ async function receive(trigger: Trigger, target = runtime) {
   return result
 }
 let services: Record<string, unknown>
+/** DSH's managed shell environment registry, which the Runtime registers the agent git-configuration marker with. */
+let shellEnv: { register: ReturnType<typeof vi.fn> }
 /** DSH's job registry the Runtime's Executor reads its workers' shell jobs from. */
 let jobs: ReturnType<typeof jobRegistry>
 /** What worker commands of the startup checks print, by argv; an Error makes the command fail with its message. */
@@ -206,7 +208,8 @@ beforeEach(async () => {
     inspect: vi.fn(async () => ({ events: [] })),
   }
   jobs = jobRegistry()
-  services = { agents, llm: { resolveCallConfig: vi.fn(async value => value) }, sessionController: controller, sessionPersistence: { flush: vi.fn(async () => {}), open: vi.fn(async () => ({ read: async () => ({ events: [] }), [Symbol.asyncDispose]: async () => {} })) }, workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }) }, permissionPresets: { set: () => {} }, subprocess, webServer: { host: '127.0.0.1', port: 3082, register: (route: { handler: HttpHandler }) => { http = route.handler; return () => {} } }, jobs: jobs.service }
+  shellEnv = { register: vi.fn(() => () => {}) }
+  services = { agents, shellEnv, llm: { resolveCallConfig: vi.fn(async value => value) }, sessionController: controller, sessionPersistence: { flush: vi.fn(async () => {}), open: vi.fn(async () => ({ read: async () => ({ events: [] }), [Symbol.asyncDispose]: async () => {} })) }, workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }) }, permissionPresets: { set: () => {} }, subprocess, webServer: { host: '127.0.0.1', port: 3082, register: (route: { handler: HttpHandler }) => { http = route.handler; return () => {} } }, jobs: jobs.service }
   for (const [name, service] of Object.entries(services)) ctx.reflect.provide(name, service)
   for (const cli of [AGENT(), OTHER(), BOT()]) writeFileSync(cli, '#!/bin/sh\n', { mode: 0o755 })
   const store = new Store(join(directory, 'orchestrator.sqlite')); seed(store); store.close()
@@ -990,12 +993,13 @@ it('runs setup again while the Feishu bot check failed, and restores the process
 
 it('writes worker shims and the agent environment from the configuration only, and restores the environment on stop', async () => {
   const bin = join(directory, 'worker-bin')
-  expect(readdirSync(bin).sort()).toEqual(['gh', 'glab', 'lark-cli'])
+  expect(readdirSync(bin).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli'])
   expect(readFileSync(join(bin, 'lark-cli'), 'utf8')).toContain(`exec '${BOT()}'`)
+  expect(readFileSync(join(bin, 'git'), 'utf8')).toContain(`if [ -z "$${WORKER_SHELL}" ]`)
   runtime.store.saveSettings({ ...runtime.store.settings(), executor: { ...runtime.store.settings().executor, blockedCommands: ['personal-gh'] } })
   const next = await restart({}, { feishu: null })
   await next.ready
-  expect(readdirSync(bin).sort()).toEqual(['gh', 'glab', 'lark-cli', 'personal-gh'])
+  expect(readdirSync(bin).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli', 'personal-gh'])
   expect(readFileSync(join(bin, 'personal-gh'), 'utf8')).toContain('personal-gh is blocked in this installation; use gh or glab')
   expect(readFileSync(join(bin, 'lark-cli'), 'utf8')).toContain('lark-cli is unavailable: this installation has no Feishu bot.')
   expect(readFileSync(join(bin, 'gh'), 'utf8')).toContain(`exec '${AGENT()}'`)
@@ -1006,6 +1010,19 @@ it('writes worker shims and the agent environment from the configuration only, a
   await next.stop()
   expect(process.env.GIT_CONFIG_GLOBAL).toBe(ambient.GIT_CONFIG_GLOBAL)
   expect(process.env.PATH?.split(':')).not.toContain(bin)
+})
+
+it('marks the shell of an Executor Session and of its subagents for the agent git configuration, and no other shell', async () => {
+  const { sessionId } = await acceptedTicket()
+  await vi.waitFor(() => { expect(shellEnv.register).toHaveBeenCalledTimes(1) })
+  const contributor = shellEnv.register.mock.calls[0]![0] as { variables: Record<string, unknown>; resolve: (execution: { agent?: unknown }) => Record<string, unknown> }
+  expect(Object.keys(contributor.variables)).toEqual([WORKER_SHELL])
+  const shellOf = (agent: unknown) => contributor.resolve({ agent })
+  const session = (id: string, parentSession?: string) => ({ id, session: { header: { parentSession } } })
+  expect(shellOf(session(sessionId))).toEqual({ [WORKER_SHELL]: '1' })
+  expect(shellOf(session(runtime.masterId))).toEqual({})
+  // A subagent of the worker reaches it through its parent Session, which is loaded while the subagent runs.
+  expect(shellOf(session('subagent-1', sessionId))).toEqual({ [WORKER_SHELL]: '1' })
 })
 
 it('waits for setup when the shim directory holds a file dsh-superagent did not write, and leaves the file alone', async () => {
@@ -1022,9 +1039,9 @@ it('rewrites the blocked-command shims when the Executor settings change them, w
   const bin = join(directory, 'worker-bin')
   const save = (blockedCommands: string[]) => runtime.settings.save('executor', { ...runtime.store.settings().executor, blockedCommands }, runtime.store.blockRevision('executor'), 'panel')
   expect(await save(['personal-gh'])).toMatchObject({ saved: true, restarting: false })
-  expect(readdirSync(bin).sort()).toEqual(['gh', 'glab', 'lark-cli', 'personal-gh'])
+  expect(readdirSync(bin).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli', 'personal-gh'])
   await save([])
-  expect(readdirSync(bin).sort()).toEqual(['gh', 'glab', 'lark-cli'])
+  expect(readdirSync(bin).sort()).toEqual(['gh', 'git', 'glab', 'lark-cli'])
   // The commands workers need cannot be blocked.
   await expect(save(['gh'])).rejects.toThrow()
   expect(restarts).not.toHaveBeenCalled()
