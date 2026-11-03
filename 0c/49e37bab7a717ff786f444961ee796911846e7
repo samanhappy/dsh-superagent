@@ -1,0 +1,26 @@
+docs/006-deployment.md
+  h_18676a549cd52a 275-276
+docs/007-architecture.md
+  h_18676a549cd52a 357
+src/app/sessions.ts
+  h_18676a549cd52a 7,12,51-57,145-166
+src/app/setup.ts
+  h_18676a549cd52a 5,34-35,40,77,127
+src/infra/environment.ts
+  h_18676a549cd52a 17,21-29,86-87,89-90,119-131,164-167
+tests/environment.spec.ts
+  h_18676a549cd52a 8,58,64-85,90,107,137-147
+tests/runtime.spec.ts
+  h_18676a549cd52a 31,81-82,211-212,996,998,1002,1015-1027,1042,1044
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c49e37bab7a717ff786f444961ee796911846e7",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
