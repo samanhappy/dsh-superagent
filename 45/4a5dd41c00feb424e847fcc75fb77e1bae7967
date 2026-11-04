@@ -1,0 +1,28 @@
+docs/006-deployment.md
+  h_18676a549cd52a 80-81
+docs/007-architecture.md
+  h_18676a549cd52a 380,382,435
+src/sources/wecom-image.ts
+  h_18676a549cd52a 1-105
+src/sources/wecom-read.ts
+  h_18676a549cd52a 3-4,6,9,16,36-37,55-60
+src/sources/wecom-trigger.ts
+  h_18676a549cd52a 45-47,52,55-56,58-60,64-84
+src/sources/wecom.ts
+  h_18676a549cd52a 9,160-163
+tests/wecom-image.spec.ts
+  h_18676a549cd52a 1-108
+tests/wecom.spec.ts
+  h_18676a549cd52a 70-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "454a5dd41c00feb424e847fcc75fb77e1bae7967",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
