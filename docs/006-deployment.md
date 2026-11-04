@@ -77,6 +77,8 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
 The Source opens one long connection per bot and reconnects with backoff. WeCom keeps a single connection for a bot, so a second dsh-superagent or another client subscribed with the same bot takes the connection over; the Source reports that as an error and stops. Setup only checks that both credentials are present: a wrong secret shows as the WeCom Source's health, not as a setup problem, because it is known only once the connection is attempted.
 
+An image a person sends becomes visible to the assessing Session: the Source downloads the encrypted URL WeCom pushes and decrypts it with the message's own `aeskey`, then commits it as an attachment. That read needs the configured model to accept image input; with a text-only model the assessment is told the image was not inspected. WeCom's image links expire about five minutes after the message arrives, so a read after that window fails with the reason instead of returning an image.
+
 ### WeChat bot (optional)
 
 1. Open the WeChat Source's card under **Settings → Sources**, choose **扫码登录**, and scan the code with WeChat on a phone; confirm on the phone, and the token is saved and dsh-superagent restarts.

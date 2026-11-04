@@ -42,20 +42,45 @@ export function wecomTime(value: number | undefined): string {
   const time = value === undefined ? Date.now() : value < 1e12 ? value * 1000 : value
   return new Date(time).toISOString()
 }
+/** The marker a media message shows; a mixed message's items use the same ones so its text and its images stay aligned. */
+const MARKERS: Record<string, string> = { image: '[图片]', file: '[文件]', video: '[视频]', voice: '[语音]' }
+const marker = (type: string | undefined): string => MARKERS[type ?? ''] ?? `[${type ?? 'unknown'}]`
 /** Reads the text of a message the bot may act on; media becomes a marker, and a transcribed voice message its text. */
 export function wecomText(message: WecomMessage): string {
   switch (message.msgtype) {
     case 'text': return message.text?.content ?? ''
-    case 'voice': return message.voice?.content ?? '[语音]'
+    case 'voice': return message.voice?.content ?? marker('voice')
     case 'mixed': return message.mixed?.msg_item.map(item => {
       const entry = item as { msgtype?: string; text?: { content?: string } }
-      return entry.msgtype === 'text' ? entry.text?.content ?? '' : '[图片]'
+      // Only an image item becomes the marker `wecomImages` has a reference for; anything else keeps its own marker.
+      return entry.msgtype === 'text' ? entry.text?.content ?? '' : marker(entry.msgtype)
     }).filter(text => text.length > 0).join('\n') ?? ''
-    case 'image': return '[图片]'
-    case 'file': return '[文件]'
-    case 'video': return '[视频]'
+    case 'image': return marker('image')
+    case 'file': return marker('file')
+    case 'video': return marker('video')
     default: return `[${message.msgtype}]`
   }
+}
+/** One image a callback carries: the encrypted download URL and the AES key that decrypts it. */
+export interface WecomImageRef { url: string; aeskey?: string }
+const imageRef = (image: { url?: string; aeskey?: string } | undefined): WecomImageRef | undefined =>
+  image?.url ? { url: image.url, ...(image.aeskey ? { aeskey: image.aeskey } : {}) } : undefined
+/** The images a message carries, in the order its text shows them as `[图片]`. */
+export function wecomImages(input: unknown): WecomImageRef[] {
+  const parsed = MessageSchema.safeParse(input)
+  if (!parsed.success) return []
+  const message = parsed.data
+  const images: WecomImageRef[] = []
+  const add = (image: { url?: string; aeskey?: string } | undefined): void => {
+    const ref = imageRef(image)
+    if (ref) images.push(ref)
+  }
+  if (message.msgtype === 'image') add(message.image)
+  if (message.msgtype === 'mixed') for (const item of message.mixed?.msg_item ?? []) {
+    const entry = item as { msgtype?: string; image?: { url?: string; aeskey?: string } }
+    if (entry.msgtype === 'image') add(entry.image)
+  }
+  return images
 }
 /** The quoted message's text, when the sender answered one; WeCom sends the content without the quoted message's id. */
 export function wecomQuote(quote: WecomMessage['quote']): string | undefined {

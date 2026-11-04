@@ -6,7 +6,7 @@ import { WecomBotSchema } from '../deployment.ts'
 import { pause } from './poll.ts'
 import { wecomLink, sendWecom } from './wecom-channel.ts'
 import { rememberWecom, wecomThreadContext } from './wecom-read.ts'
-import { SOURCE, wecomChat, wecomTrigger } from './wecom-trigger.ts'
+import { SOURCE, wecomChat, wecomImages, wecomTrigger } from './wecom-trigger.ts'
 import { setActiveWecom, WecomConnection, type WecomFrame, type WecomRobot } from './wecom-ws.ts'
 import { health, sourceContext, type SourceContext } from './host.ts'
 import type { SourceKind } from './kind.ts'
@@ -157,7 +157,10 @@ async function receive(ctx: SourceContext, robot: WecomRobot, frame: WecomFrame)
   const trigger = wecomTrigger(frame.body, robot.botId)
   if (!trigger) return
   const chatId = wecomChat(trigger) ?? ''
-  rememberWecom(chatId, { id: String(trigger.meta.messageId ?? ''), from: String(trigger.actor.id), at: trigger.at, text: trigger.text })
+  // The image URLs expire, so the conversation keeps them for the read the assessment may make soon after.
+  const images = wecomImages(frame.body)
+  rememberWecom(chatId, { id: String(trigger.meta.messageId ?? ''), from: String(trigger.actor.id), at: trigger.at, text: trigger.text,
+    ...(images.length ? { images } : {}) })
   await ctx.receive(trigger)
   const group = trigger.meta.chattype === 'group'
   for (const ref of trigger.threads) ctx.threads.describe(threadKey(ref), {

@@ -67,6 +67,8 @@ describe('wecom trigger', () => {
     expect(wecomText({ msgid: 'm', msgtype: 'voice', from: { userid: 'u' }, chattype: 'single', voice: { content: 'transcribed' } } as never)).toBe('transcribed')
     expect(wecomText({ msgid: 'm', msgtype: 'mixed', from: { userid: 'u' }, chattype: 'single',
       mixed: { msg_item: [{ msgtype: 'text', text: { content: 'look' } }, { msgtype: 'image' }] } } as never)).toBe('look\n[图片]')
+    expect(wecomText({ msgid: 'm', msgtype: 'mixed', from: { userid: 'u' }, chattype: 'single',
+      mixed: { msg_item: [{ msgtype: 'text', text: { content: 'look' } }, { msgtype: 'file' }] } } as never)).toBe('look\n[文件]')
   })
   it('keeps the quoted message as text, because WeCom sends no id for it', () => {
     const trigger = wecomTrigger(message({ quote: { msgtype: 'text', text: { content: 'the earlier request' } } }), 'bot-1')!

@@ -377,8 +377,9 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/wecom.ts` | The WeCom kind and plugin entry, exported as `./wecom-watch`: the bot's long connection, kept open with backoff, health and reconnect |
 | `src/sources/wecom-ws.ts` | The WeCom intelligent-robot long connection: subscription, heartbeat, message and event callbacks, and markdown replies |
 | `src/sources/wecom-trigger.ts` | WeCom callbacks as Triggers, conversation addresses and the text a media message shows |
+| `src/sources/wecom-image.ts` | Reads a WeCom message's image: downloads the encrypted URL the callback carries, decrypts it with the message's `aeskey` and commits it as an attachment for the assessing Session |
 | `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, `sent` or `gone` |
-| `src/sources/wecom-read.ts` | The conversation window the Source remembers, read as `wecomThreadContext` |
+| `src/sources/wecom-read.ts` | The conversation window the Source remembers with each message's images, read as `wecomThreadContext` |
 | `src/sources/weixin.ts` | The WeChat kind and plugin entry, exported as `./weixin-watch`: the iLink bot long poll, kept running with backoff and health, and its login button |
 | `src/sources/weixin-api.ts` | The iLink bot API: request headers and `base_info`, `getupdates` long polling with its cursor, `sendmessage`, and the stale-token (`-14`) error |
 | `src/sources/weixin-trigger.ts` | WeChat messages as Triggers, direct-chat addresses and the text a media message shows |
@@ -431,6 +432,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
 | `tests/wecom.spec.ts` | The WeCom Source: Trigger translation, the long connection's subscription, acks, callbacks and take-over, replies, and the conversation window assessments read |
+| `tests/wecom-image.spec.ts` | Reads of a WeCom message's images: the marker keys, the download and AES decryption, and the refusals |
 | `tests/weixin.spec.ts` | The WeChat transport: Trigger translation, request headers and bodies, the long-poll cursor, replies, and the conversation window assessments read |
 | `tests/weixin-loop.spec.ts` | The WeChat kind and loop: its fields, scope, Policy rows and variables, a poll round that stores Triggers before moving the cursor, and the health of failures and a stale token |
 | `tests/panel-login.spec.tsx` | The panel's login card: the QR code, the verification-code input, and the account saved on confirmation |
