@@ -1,0 +1,28 @@
+docs/006-deployment.md
+  h_18676a549cd52a 80
+src/app/assessment.ts
+  h_18676a549cd52a 3,17,66-68,105-109
+src/app/delivery.ts
+  h_18676a549cd52a 4,16-17,69-72,83-85
+src/app/runtime.ts
+  h_18676a549cd52a 4,51-52,122-143,158,161-162
+src/app/sessions.ts
+  h_18676a549cd52a 14,193-194,197
+src/executor/dsh.ts
+  h_18676a549cd52a 5,81-82,345-348,472-475
+tests/assessment.spec.ts
+  h_18676a549cd52a 4,6,41-45,49-53,71-77,142-155
+tests/delivery.spec.ts
+  h_18676a549cd52a 3,34,37-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c9f8cbcf0bbc43b8757df9aec9649ccccca0bc0",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
