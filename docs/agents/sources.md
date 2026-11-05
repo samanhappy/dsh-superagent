@@ -9,7 +9,7 @@ A Source is not done until all of these exist:
 1. **The kind and its loop** in `src/sources/<name>.ts`: `schema`, `fields`, `health`, `facts` where setup derives any, and a loop that waits for setup, follows the switch, moves cursors after `receive`, keeps errors per item, reports health and stops on abort.
 2. **The Trigger translation**, with stable ids, dropping the agent's own messages.
 3. **The `scope`** that decides what the Source receives, decided from `meta` alone.
-4. **The Channel**, whose `send` posts each message once and answers `gone` only when the conversation can never receive it.
+4. **The Channel**, whose `send` posts each message once and answers `gone` only when the conversation can never receive it, and whose optional `check` refuses text the Channel can never accept, such as one over the IM word limit, before Outbox queues a reply.
 5. **The Source's part of the Policy** — its `allowed` list and its admission rows.
 6. **The plugin row** in [cordis.patch.yml](../../cordis.patch.yml), plus the `*-watch` export and tsdown entry in [package.json](../../package.json).
 7. **A Skill** under `skills/dsh-superagent-<name>/SKILL.md`, if workers need one.

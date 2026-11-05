@@ -3,6 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { z } from 'zod'
 import { threadKey } from '../core/index.ts'
 import { WecomBotSchema } from '../deployment.ts'
+import { checkedImText } from '../infra/text.ts'
 import { pause } from './poll.ts'
 import { wecomLink, sendWecom } from './wecom-channel.ts'
 import { rememberWecom, wecomThreadContext } from './wecom-read.ts'
@@ -33,7 +34,7 @@ export const wecomKind: SourceKind<WecomConfig> = {
   health: ['wecom'],
   // The robot only receives what addresses it, so every received message is listened to and none is observed unaddressed.
   scope: ({ meta }) => ({ listened: true, observed: false, row: meta.direct === true || meta.chattype === 'single' ? 'direct' : 'group' }),
-  channel: { allowed: () => true, send: sendWecom, link: wecomLink },
+  channel: { allowed: () => true, check: message => { checkedImText(message.text) }, send: sendWecom, link: wecomLink },
   threadContext: wecomThreadContext,
   policy: {
     unnamed: { person: { zh: '企业微信用户', en: 'WeCom user' }, bot: { zh: '企业微信机器人', en: 'WeCom bot' } },

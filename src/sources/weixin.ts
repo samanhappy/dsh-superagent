@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { threadKey, type Trigger } from '../core/index.ts'
 import { WeixinAccountSchema, type WeixinAccount } from '../deployment.ts'
 import { KV } from '../kv.ts'
+import { checkedImText } from '../infra/text.ts'
 import { health, sourceContext, type SourceContext } from './host.ts'
 import type { SourceKind } from './kind.ts'
 import { pause } from './poll.ts'
@@ -42,7 +43,7 @@ export const weixinKind: SourceKind<WeixinConfig> = {
   health: ['weixin'],
   // The bot only receives what people send it directly, so every received message is listened to and none is observed unaddressed.
   scope: () => ({ listened: true, observed: false, row: 'direct' }),
-  channel: { allowed: () => true, send: sendWeixin, link: weixinLink },
+  channel: { allowed: () => true, check: message => { checkedImText(message.text) }, send: sendWeixin, link: weixinLink },
   threadContext: weixinThreadContext,
   login: weixinLogin,
   policy: {

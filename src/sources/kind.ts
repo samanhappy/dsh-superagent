@@ -51,6 +51,11 @@ export interface SourceChannel<C> {
    * @throws when delivery failed but may succeed on a later retry.
    */
   send(host: Pick<SourceContext, 'commands'>, message: OutboundMessage): Promise<'sent' | 'gone'>
+  /**
+   * Throws when this Channel can never accept `message` as written, such as text over its word limit. The Outbox calls it
+   * before queueing a reply, so the agent that wrote it learns why to rewrite instead of a message retrying forever.
+   */
+  check?(message: OutboundMessage): void
   /** Returns the URL and label for `address`; `url` is empty when `links` lack the required deployment info. */
   link(address: Record<string, string>, links: ChannelLinks): ChannelLink
 }

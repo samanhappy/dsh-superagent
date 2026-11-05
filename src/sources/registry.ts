@@ -97,6 +97,8 @@ export class SourceRegistry implements SourceScope {
     if (!kind) return 'waiting'
     return kind.channel ? kind.channel.send({ commands }, message) : 'gone'
   }
+  /** Throws when the message's Channel refuses it as written, so the Outbox can refuse a reply before queueing it. */
+  check(message: OutboundMessage): void { this.kinds.get(message.channel.source)?.channel?.check?.(message) }
   link(channel: ChannelRef, links: ChannelLinks): ChannelLink {
     const link = this.kinds.get(channel.source)?.channel?.link(channel.address, links)
     return link ?? { url: '', label: { zh: channel.source, en: channel.source } }
