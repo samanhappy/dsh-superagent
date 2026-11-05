@@ -11,7 +11,7 @@ import { key, liveTicket, type Ticket } from '../core/index.ts'
 import { mandateInstructions, ticketOfSession } from '../executor/dsh.ts'
 import { WORKER_SHELL } from '../infra/environment.ts'
 import type { HealthEntry } from '../infra/health.ts'
-import { AgentDelivery, messageId } from './delivery.ts'
+import { AgentDelivery, messageId, type DeliveryContent } from './delivery.ts'
 import type { Effects } from './effects.ts'
 import type { Variable } from './execution-environment.ts'
 import { RetryHealth } from './retry-health.ts'
@@ -190,11 +190,11 @@ export class Sessions {
     return !('error' in result) && await this.agentDelivery.holds(result.agent, key(requestId))
   }
   /** Deliver a message once per request id: to the next turn, the current one, or `inject`ed with its label without waking the agent. */
-  async prompt(sessionId: string, requestId: string, text: string, mode: 'queue' | 'steer' | { inject: string }, authorize?: () => void,
-    accepted?: () => void): Promise<void> {
+  async prompt(sessionId: string, requestId: string, content: string | DeliveryContent, mode: 'queue' | 'steer' | { inject: string },
+    authorize?: () => void, accepted?: () => void): Promise<void> {
     const result = await this.ctx.sessionController.resolveAgent(sessionId as SessionId)
     if ('error' in result) throw result.error
-    await this.agentDelivery.send(result.agent, key(requestId), text, mode, this.host.lifetime, authorize, accepted)
+    await this.agentDelivery.send(result.agent, key(requestId), content, mode, this.host.lifetime, authorize, accepted)
   }
   /** The id of the message `prompt` delivers under `requestId`, which DSH's inbox events name it by. */
   promptedId(requestId: string): MessageId { return messageId(key(requestId)) }

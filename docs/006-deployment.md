@@ -77,7 +77,7 @@ Both presets run with `danger-full-access` as the operator's OS user and read me
 
 The Source opens one long connection per bot and reconnects with backoff. WeCom keeps a single connection for a bot, so a second dsh-superagent or another client subscribed with the same bot takes the connection over; the Source reports that as an error and stops. Setup only checks that both credentials are present: a wrong secret shows as the WeCom Source's health, not as a setup problem, because it is known only once the connection is attempted.
 
-An image a person sends becomes visible to the assessing Session: the Source downloads the encrypted URL WeCom pushes and decrypts it with the message's own `aeskey`, then commits it as an attachment. That read needs the configured model to accept image input; with a text-only model the assessment is told the image was not inspected. WeCom's image links expire about five minutes after the message arrives, so a read after that window fails with the reason instead of returning an image.
+An image a person sends is read from the encrypted URL WeCom pushes and decrypted with the message's own `aeskey`, then committed as an attachment: the main Session receives it beside the request card, and the worker Session of a ticket receives the images of the trigger it works from. The assessment lane reads any further image of the thread on demand. A read needs the configured model to accept image input; with a text-only model the image is left out instead of inspected. WeCom's image links expire about five minutes after the message arrives, so an image read after that window (for example by a ticket launched much later) is unavailable.
 
 ### WeChat bot (optional)
 
