@@ -1,0 +1,38 @@
+docs/006-deployment.md
+  h_18676a549cd52a 226
+docs/007-architecture.md
+  h_18676a549cd52a 41,159
+docs/008-cookbook.md
+  h_18676a549cd52a 179
+docs/agents/sources.md
+  h_18676a549cd52a 12
+src/app/outbox.ts
+  h_18676a549cd52a 11,27-30,48-49
+src/app/store.ts
+  h_18676a549cd52a 15-16
+src/client/locales.ts
+  h_18676a549cd52a 621
+src/sources/feishu.ts
+  h_18676a549cd52a 5,65
+src/sources/kind.ts
+  h_18676a549cd52a 54-58
+src/sources/registry.ts
+  h_18676a549cd52a 100-101
+src/sources/wecom.ts
+  h_18676a549cd52a 6,37
+src/sources/weixin.ts
+  h_18676a549cd52a 7,46
+tests/outbox.spec.ts
+  h_18676a549cd52a 6,8-9,46-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a66e058ccff3ab2c5649f644709e6e1394f51af",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
