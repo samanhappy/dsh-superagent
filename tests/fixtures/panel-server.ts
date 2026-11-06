@@ -335,10 +335,11 @@ const ROUTES: { [K in keyof Api]: Route<K> } = {
     const queued = (item: TriggerRow) => ({ ...item, disposition: { ...item.disposition, queued: true }, actions: { requeue: false } })
     return { ...found, timeline: found.timeline.map(item => server.queued.has(item.id) ? queued(item) : item) }
   } },
-  'POST threads/:key/unsubscribe': { answer: ({ params }) => {
-    const removed = server.threads.length > 0
-    server.threads = []
-    return { removed, thread: params.key, context_delivery: 'injected' }
+  'POST threads/:key/unsubscribe': { query: ['ticket_id'], answer: ({ params, query }) => {
+    const ticketId = query.ticket_id
+    const removed = ticketId ? true : server.threads.length > 0
+    if (!ticketId) server.threads = []
+    return { removed, thread: params.key, ...(ticketId ? { ticket_id: ticketId } : {}), context_delivery: 'injected' }
   } },
   'POST triggers/:id/requeue': { answer: ({ params }) => { server.queued.add(params.id); return { queued: true } } },
   'GET decisions': { query: ['kind', 'window', 'offset', 'limit'], answer: ({ query }) =>

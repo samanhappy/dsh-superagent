@@ -20,6 +20,7 @@ export type WecomConfig = ReturnType<typeof WecomConfigSchema.parse>
 export const TAKEN_OVER = 'Another dsh-superagent instance subscribed to this WeCom bot; stop it, then restart this one'
 export const wecomKind: SourceKind<WecomConfig> = {
   kind: SOURCE,
+  chat: true,
   title: { zh: '企业微信', en: 'WeCom' },
   description: { zh: '通过智能机器人的长连接接收私聊和 @ 机器人的群消息，并在同一会话中回复。', en: 'Receives the messages a WeCom intelligent robot is addressed in over its long connection, and replies in the same conversation.' },
   schema: WecomConfigSchema,

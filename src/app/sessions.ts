@@ -165,14 +165,16 @@ export class Sessions {
     }
     return false
   }
-  /** Resolves or creates session `id` in workspace `cwd`, initializes its role model, decorates it with prompts/skills/tools, sets `danger-full-access` permissions, and renames it to `title`. */
+  /** Resolves or creates session `id` in directory `cwd`, initializes its role model, decorates it with prompts/skills/tools, sets `danger-full-access` permissions, and renames it to `title`. */
   async ensure(id: string, cwd: string, title: string, role: 'orchestrator' | 'worker'): Promise<Agent> {
     const ctx = this.ctx
     let result = await ctx.sessionController.resolveAgent(id as SessionId)
     if ('error' in result && result.error.code === 'session/not-found') {
-      const workspace = await ctx.workspaceRegistry.create(cwd)
+      // Only the main Session anchors a Workspace, at the state directory. An Executor Session takes its ticket
+      // directory as its cwd directly, so one Ticket's temporary directory never becomes a Workspace in the person's list.
+      const workspace = role === 'orchestrator' ? await ctx.workspaceRegistry.create(cwd) : undefined
       // A Session keeps the preset it was created with, one of the bundle's own (cordis.patch.yml).
-      await ctx.sessionController.create({ sessionId: id as SessionId, workspaceId: workspace.id,
+      await ctx.sessionController.create({ sessionId: id as SessionId, ...(workspace ? { workspaceId: workspace.id } : { cwd }),
         agentPreset: role === 'worker' ? WORKER_PRESET : ROUTER_PRESET })
       result = await ctx.sessionController.resolveAgent(id as SessionId)
     }

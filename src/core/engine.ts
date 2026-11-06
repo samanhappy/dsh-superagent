@@ -149,10 +149,12 @@ export class Engine {
    */
   dismiss(decisionId: string): Decision { return this.repo.atomic(() => this.evals.dismiss(decisionId)) }
   /**
-   * Drop every ticket's Subscription to a Thread, until a new Decision subscribes one again.
+   * Drop a Thread's Subscriptions, every ticket's or only `ticketId`'s, until a new Decision subscribes one again.
    * @returns whether a Subscription was dropped.
    */
-  unsubscribe(thread: string): boolean { return this.repo.atomic(() => this.tickets.dropSubscriptions(thread, 'person')) }
+  unsubscribe(thread: string, ticketId?: string): boolean {
+    return this.repo.atomic(() => this.tickets.dropSubscriptions(thread, 'person', ticketId))
+  }
   /**
    * A person stops a ticket, which withdraws its Mandate: it ends and receives nothing more.
    * @throws UserError when the ticket is unknown.

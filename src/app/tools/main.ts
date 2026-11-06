@@ -239,10 +239,14 @@ export function mainTools(host: MainToolsHost, agent: Agent): Tool[] {
     }),
     tool({
       name: 'orchestrator_thread_unsubscribe',
-      description: 'Drop every ticket subscription on a thread. Later messages there no longer reach those tickets as context; a new positive decision can subscribe it again.',
-      schema: z.object({ thread: z.string().describe('Thread key, for example github:123 or feishu:<chat>:<root message>') }).strict(),
+      description: 'Drop every ticket subscription on a thread, or only one ticket\'s when ticket_id is given. Later messages there no longer reach the removed tickets as context; a new positive decision can subscribe it again.',
+      schema: z.object({
+        thread: z.string().describe('Thread key, for example github:123 or feishu:<chat>:<root message>'),
+        ticket_id: z.string().min(1).optional().describe('Drop only this ticket\'s subscription, leaving the thread\'s other tickets'),
+      }).strict(),
       execute: async args => {
-        return { removed: host.quietly(() => host.engine.unsubscribe(args.thread)), thread: args.thread }
+        const removed = host.quietly(() => host.engine.unsubscribe(args.thread, args.ticket_id))
+        return { removed, thread: args.thread, ...(args.ticket_id ? { ticket_id: args.ticket_id } : {}) }
       },
     }),
     tool({

@@ -11,8 +11,9 @@ function trigger(id: string, overrides: Partial<Trigger> = {}): Trigger {
 interface Hooks {
   emit?: (event: { type: string; data: Record<string, unknown> }) => void
   prepareTicket?: EngineOptions['prepareTicket']
+  chatThread?: EngineOptions['chatThread']
 }
-function harness(policyOverrides: Partial<Policy> = {}, { emit, prepareTicket }: Hooks = {}) {
+function harness(policyOverrides: Partial<Policy> = {}, { emit, prepareTicket, chatThread }: Hooks = {}) {
   const repo = new MemoryRepositories()
   const outbox: OutboundMessage[] = []
   const withdrawn: string[] = []
@@ -41,7 +42,8 @@ function harness(policyOverrides: Partial<Policy> = {}, { emit, prepareTicket }:
     withdraw: id => { withdrawn.push(id) },
   }
   const engine = new Engine({ repo, scope, policy: () => policy, assessor, executor, outbox: queued,
-    ...emit ? { emit } : {}, ...prepareTicket ? { prepareTicket } : {}, now: () => new Date(Date.UTC(2026, 8, 23, 0, 0, clock)).toISOString() })
+    ...emit ? { emit } : {}, ...prepareTicket ? { prepareTicket } : {}, ...chatThread ? { chatThread } : {},
+    now: () => new Date(Date.UTC(2026, 8, 23, 0, 0, clock)).toISOString() })
   /** Simulate the executor starting queued assignments (unless `launch` is false) and delivering pending ticket inputs. */
   function settle({ launch = true } = {}) {
     for (;;) {
@@ -265,6 +267,43 @@ describe('subscription fan-out', () => {
     expect(h.engine.unsubscribe('chat:t1')).toBe(true)
     h.engine.receive(trigger('2')); h.pump()
     expect(h.repo.tickets.get(decision.ticketId!)!.inputs).toEqual([])
+  })
+  it('unsubscribes one ticket from a thread and leaves the thread\'s other tickets', () => {
+    const h = harness()
+    const first = accepted(h).ticketId!
+    const second = accepted(h, '2', 't2').ticketId!
+    h.engine.bindThread(second, { source: 'chat', id: 't1' }, false)
+    expect(h.repo.threads.get('chat:t1')!.subscriptions).toEqual([first, second])
+    expect(h.engine.unsubscribe('chat:t1', first)).toBe(true)
+    expect(h.repo.threads.get('chat:t1')!.subscriptions).toEqual([second])
+    expect(h.engine.unsubscribe('chat:t1', first)).toBe(false)
+  })
+  it('stops a ticket following a shared chat thread when it ends, keeping its other threads', () => {
+    const events: { type: string; data: Record<string, unknown> }[] = []
+    const h = harness({}, { chatThread: key => key.startsWith('chat:'), emit: event => events.push(event) })
+    const ticketId = accepted(h).ticketId!
+    const other = accepted(h, '2', 't2').ticketId!
+    h.engine.bindThread(other, { source: 'chat', id: 't1' }, false)
+    h.engine.bindThread(ticketId, { source: 'gh', id: 'pr-5' }, true)
+    h.engine.report(ticketId, { state: 'ready', summary: 'done' })
+    expect(h.repo.tickets.get(ticketId)!.ended).toBeUndefined()
+    h.engine.threadClosed({ source: 'gh', id: 'pr-5' }, 'merged', '2026-09-23T00:00:30Z')
+    expect(h.repo.tickets.get(ticketId)!.ended).toMatchObject({ outcome: 'merged' })
+    expect(h.repo.threads.get('chat:t1')!.subscriptions).toEqual([other])
+    expect(h.repo.threads.get('gh:pr-5')!.subscriptions).toEqual([ticketId])
+    expect(events.filter(event => event.type === 'thread.unsubscribed').map(event => event.data))
+      .toEqual([{ threadKey: 'chat:t1', ticketId, by: 'ticket' }])
+  })
+  it('drops an ended chat ticket when a new ticket subscribes to its thread', () => {
+    const h = harness({}, { chatThread: key => key.startsWith('chat:') })
+    const first = accepted(h).ticketId!
+    h.engine.stopTicket(first)
+    expect(h.repo.threads.get('chat:t1')!.subscriptions).toEqual([first])
+    h.engine.receive(trigger('2')); h.pump()
+    const second = h.decide(h.requests.at(-1)!, { kind: 'accept', title: 'Next', scope: 'small', reason: 'requested', acknowledgement: 'ok' }).ticketId!
+    h.settle()
+    expect(h.repo.tickets.get(first)!.ended).toBeDefined()
+    expect(h.repo.threads.get('chat:t1')!.subscriptions).toEqual([second])
   })
   it('lets an Executor drop a thread attached to its ticket, keeping the thread\'s other tickets, but not its own threads', async () => {
     const events: { type: string; data: Record<string, unknown> }[] = []

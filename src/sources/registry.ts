@@ -41,6 +41,11 @@ export class SourceRegistry implements SourceScope {
     return new Map(names.flatMap(name => { const entry = this.health.get(name); return entry ? [[name, entry] as const] : [] }))
   }
   kind(id: string): SourceKind | undefined { return this.kinds.get(id) }
+  /** Whether a Thread belongs to a chat Source, where a shared Thread follows live Tickets and at most one ended Ticket. */
+  isChatThread(key: string): boolean {
+    const at = key.indexOf(':')
+    return at > 0 && this.kinds.get(key.slice(0, at))?.chat === true
+  }
   /** Every registered kind's instance ordered by ID, followed by stored instances whose kind is not installed (with their config kept as stored). */
   instances(settings = this.settings()): (SourceInstance & { installed: boolean })[] {
     const installed = [...this.kinds.values()].sort((a, b) => a.kind.localeCompare(b.kind)).map(kind => ({ ...this.resolve(kind, settings.sources[kind.kind]), installed: true }))

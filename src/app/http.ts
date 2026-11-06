@@ -158,6 +158,7 @@ const limit = (fallback: number, max: number) => z.coerce.number().int().positiv
 const TicketsQuery = z.object({ state: z.enum(TICKET_FILTERS).catch('open'), offset, limit: limit(20, 1000) })
 const ThreadsQuery = z.object({ filter: z.enum(THREAD_FILTERS).catch('subscribed'), offset, limit: limit(20, 1000) })
 const ThreadQuery = z.object({ limit: limit(50, 100), before: z.string().optional(), around: z.string().optional() })
+const UnsubscribeQuery = z.object({ ticket_id: z.string().min(1).optional() })
 const DecisionsQuery = z.object({ kind: z.string().default(''), window: z.literal('24h').optional().catch(undefined), offset,
   limit: limit(30, 200) })
 const count = z.coerce.number().int().nonnegative()
@@ -229,9 +230,11 @@ function routes(runtime: HttpHost): Routes {
       if (!detail) throw new RouteError(404, 'Thread not found')
       return detail
     },
-    'POST threads/:key/unsubscribe': async ({ params }) => {
-      const removed = runtime.engine.unsubscribe(params.key)
-      return { removed, thread: params.key, context_delivery: await runtime.sessions.delivery(`subscription:${params.key}`) }
+    'POST threads/:key/unsubscribe': async ({ params, query }) => {
+      const { ticket_id: ticketId } = UnsubscribeQuery.parse(query)
+      const removed = runtime.engine.unsubscribe(params.key, ticketId)
+      return { removed, thread: params.key, ...(ticketId ? { ticket_id: ticketId } : {}),
+        context_delivery: await runtime.sessions.delivery(`subscription:${params.key}`) }
     },
     'POST triggers/:id/requeue': ({ params }) => {
       const queued = runtime.engine.reevaluate(params.id)

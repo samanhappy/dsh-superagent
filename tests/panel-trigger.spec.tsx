@@ -63,6 +63,15 @@ it('filters the Thread list by activity, and unsubscribes from a Thread page aft
   expect(server.requests.some(request => request.path === 'threads/feishu:oc_1:om_root/unsubscribe')).toBe(true)
 })
 
+it('unsubscribes one Ticket from a Thread page after confirmation', async () => {
+  await mount()
+  await click(zh['tab.trigger'])
+  await click('这个文案好奇怪')
+  await click(zh.unsubscribeTicket)
+  await click(zh.confirm)
+  expect(server.requests.some(request => request.path === 'threads/feishu:oc_1:om_root/unsubscribe?ticket_id=t1')).toBe(true)
+})
+
 it('folds consecutive automated messages from one sender on a Thread, showing the newest with its text', async () => {
   const bot = (id: string, at: string) => trigger(id, at, { actor: { source: 'github', id: '' }, human: false,
     text: `CI of PR #42 at abc1234: 3 checks, 0 failed, ${id === 'b3' ? 0 : 1} running.`, preview: `CI ${id}` })

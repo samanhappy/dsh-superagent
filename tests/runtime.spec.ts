@@ -234,6 +234,13 @@ it('relays an explicit member mention as a candidate and creates the ticket, ack
   expect(Object.fromEntries(runtime.ticketEnvironment(ticket).map(variable => [variable.key, variable.value]))).toMatchObject({ DSH_SUPERAGENT_DIR: ticket.execution!.directory, DSH_SUPERAGENT_NAME: ticket.execution!.name, DSH_SUPERAGENT_TICKET: ticket.id, DSH_SUPERAGENT_FEISHU_CHAT: CHAT, DSH_SUPERAGENT_GITHUB_REPOSITORY: 'acme/widgets', DSH_SUPERAGENT_GITHUB_ACCOUNT: 'agent-bot', DSH_SUPERAGENT_GITHUB_NUMBER: '' })
   expect(ticket.assignments).toEqual([expect.objectContaining({ state: 'running', startedAt: expect.any(String) })])
   expect(sessionId).toBe(`worker-${ticket.id}`)
+  // An Executor Session takes the ticket directory as its cwd instead of registering a Workspace for it; the main Session
+  // is the only Workspace the bundle creates.
+  const workerCreate = controller.create.mock.calls.map(([request]) => request).find(request => request.sessionId === sessionId)!
+  expect(workerCreate).toMatchObject({ cwd: ticket.execution!.directory })
+  expect(workerCreate).not.toHaveProperty('workspaceId')
+  // The main Session anchors the bundle's only Workspace, at the state directory.
+  expect(controller.create.mock.calls.map(([request]) => request).find(request => request.sessionId === runtime.masterId)).toMatchObject({ workspaceId: directory })
   expect(runtime.store.threads.get(`feishu:${CHAT}:om_1`)?.subscriptions).toEqual([ticket.id])
   expect(runtime.store.replyStatus(key('ack', trigger.id))).toBe('sent')
   const larkCalls = vi.mocked(Commands.prototype.lark).mock.calls.map(([args]) => args)
@@ -1251,7 +1258,7 @@ it('keeps the receipt of a message withdrawn while it went out, so its id is not
   expect([runtime.store.receipts.get('raced'), runtime.effects.pending('reply')]).toEqual([expect.objectContaining({ text: 'Done', status: 'sent' }), false])
 })
 
-it('resumes several ended tickets on one thread from one message without the launch waiting on itself', async () => {
+it('resumes only the last ended ticket on a shared chat thread without the launch waiting on itself', async () => {
   const first = await acceptedTicket()
   const other = feishu('30', '@bot 顺手把这里也改了', { root_id: undefined })
   await receive(other)
@@ -1262,9 +1269,13 @@ it('resumes several ended tickets on one thread from one message without the lau
   await runTool(first.sessionId, 'orchestrator_trigger_handback', { trigger_id: another.id, reason: 'Another change.' })
   const second = await acceptedTicket(another)
   for (const ticket of [first, second]) await runTool(ticket.sessionId, 'orchestrator_report', { state: 'dropped', summary: 'nothing to do' })
+  // The first end drops its chat subscription because the second still follows the thread; the last one keeps it to resume.
+  expect(runtime.store.threads.get(`feishu:${CHAT}:om_1`)!.subscriptions).toEqual([second.ticket.id])
   await receive(feishu('32', '还有问题', { mentions: [], root_id: 'om_1', sender_id: 'ou_guest' }))
-  await vi.waitFor(() => expect([first, second].map(ticket => runtime.store.tickets.get(ticket.ticket.id)!.ended)).toEqual([undefined, undefined]), { timeout: 3000 })
-  await vi.waitFor(() => expect([first, second].map(ticket => runtime.store.tickets.get(ticket.ticket.id)!.assignments.at(-1)!.state)).toEqual(['running', 'running']), { timeout: 3000 })
+  await vi.waitFor(() => expect(runtime.store.tickets.get(second.ticket.id)!.ended).toBeUndefined(), { timeout: 3000 })
+  await vi.waitFor(() => expect(runtime.store.tickets.get(second.ticket.id)!.assignments.at(-1)!.state).toEqual('running'), { timeout: 3000 })
+  expect(runtime.store.tickets.get(first.ticket.id)!.ended).toBeDefined()
+  expect(runtime.store.tickets.get(second.ticket.id)!.assignments).toHaveLength(2)
 })
 
 it('attaches a message to an ended ticket and so resumes it', async () => {

@@ -67,6 +67,17 @@ it('decodes path parameters and parses each route\'s query', async () => {
   expect(seen).toEqual(['feishu:oc_1:om/root', { filter: { kinds: ['accept', 'reopen'], since: expect.any(String) }, offset: 0, limit: 200 }])
 })
 
+it('unsubscribes only the ticket named by ticket_id', async () => {
+  const seen: unknown[] = []
+  const call = serve({
+    engine: { unsubscribe: (key: string, ticketId?: string) => { seen.push([key, ticketId]); return true } },
+    sessions: { delivery: async () => 'injected' },
+  })
+  expect(await call('POST', `threads/${encodeURIComponent('feishu:oc_1:om/root')}/unsubscribe?ticket_id=t1`))
+    .toMatchObject({ status: 200, body: { removed: true, ticket_id: 't1', context_delivery: 'injected' } })
+  expect(seen).toEqual([['feishu:oc_1:om/root', 't1']])
+})
+
 it('answers only a same-origin request from the panel on the loopback address', async () => {
   const call = serve({ sessions: { delivery: async () => 'injected' }, engine: { unsubscribe: () => true } })
   const post = (headers: Headers) => call('POST', 'threads/github%3A1/unsubscribe', undefined, headers)

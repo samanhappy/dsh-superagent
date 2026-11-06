@@ -7,8 +7,8 @@ import { usePanel } from './provider.tsx'
 import { actorName, localized, readableMarkers, reasonLabel, valueLabel } from './text.ts'
 import { ActionLink, ConfirmButton, LabelValue, SessionButton, StageMark, When } from './widgets.tsx'
 
-export function TicketLine({ ticket, question, onChanged, context }: {
-  ticket: TicketRow; question?: boolean; onChanged?: () => Promise<void>; context?: boolean
+export function TicketLine({ ticket, question, onChanged, onUnsubscribe, context }: {
+  ticket: TicketRow; question?: boolean; onChanged?: () => Promise<void>; onUnsubscribe?: () => Promise<unknown>; context?: boolean
 }) {
   const { t, call, navigate } = usePanel()
   const status = ticketMark(t, ticket)
@@ -38,7 +38,10 @@ export function TicketLine({ ticket, question, onChanged, context }: {
         {ticket.actions.stop && <ConfirmButton variant="outline" icon="stop" label={t('stop')} title={t('stopConfirmTitle')}
           message={t('stopConfirm', { title: ticket.title })}
           onConfirm={() => after(call('POST tickets/:id/stop', { id: ticket.id }))} />}
-      </>}</div>
+      </>}
+      {onUnsubscribe && <ConfirmButton variant="outline" icon="unsubscribe" label={t('unsubscribeTicket')}
+        title={t('unsubscribeTicketTitle')} message={t('unsubscribeTicketConfirm', { title: ticket.title })}
+        onConfirm={onUnsubscribe} />}</div>
     </div>
   </li>
 }

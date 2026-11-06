@@ -122,6 +122,8 @@ export interface SourceKind<C extends Record<string, unknown> = Record<string, u
   kind: string
   title: Localized
   description: Localized
+  /** A conversation rather than an issue tracker, such as a chat: a shared Thread follows its live Tickets and at most one ended Ticket. */
+  chat?: true
   /** Read-only status facts derived from `deployment` (undefined while waiting for setup), keyed by field key. */
   facts?(deployment: Deployment | undefined): Record<string, Localized | string>
   /** Validates stored and submitted configuration and fills defaults. */

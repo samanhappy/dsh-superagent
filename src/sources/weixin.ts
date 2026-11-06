@@ -29,6 +29,7 @@ export const STALE_TOKEN_PAUSE_MS = 3_600_000
 export const STALE_TOKEN_NOTE = 'The WeChat bot token is stale; log in again on the WeChat Source\'s card in the panel'
 export const weixinKind: SourceKind<WeixinConfig> = {
   kind: SOURCE,
+  chat: true,
   title: { zh: '微信', en: 'WeChat' },
   description: { zh: '通过扫码登录的微信机器人长轮询接收私聊消息，并在同一会话中回复。', en: 'Receives the direct messages of a WeChat bot logged in by scanning a code, and replies in the same conversation.' },
   schema: WeixinConfigSchema,

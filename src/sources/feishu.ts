@@ -31,6 +31,7 @@ const FeishuConfigSchema = FeishuBotSchema.extend({
 export type FeishuConfig = z.infer<typeof FeishuConfigSchema>
 export const feishuKind: SourceKind<FeishuConfig> = {
   kind: SOURCE,
+  chat: true,
   refreshLabels: (host, signal) => refreshChatNames(sourceContext(host, feishuKind), signal),
   title: { zh: '飞书', en: 'Feishu' },
   description: { zh: '接收下列群和私聊中发给机器人的消息，补收群历史并轮询订阅的线程。', en: 'Receives messages to the bot in these chats and direct messages, recovers chat history and polls subscribed Threads.' },

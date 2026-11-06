@@ -24,6 +24,8 @@ An `idle` Ticket has finished its turn without an outstanding question. A Trigge
 
 Each Ticket gets an Executor Session named `worker-<ticket id>` and a directory named after the Ticket's short name. Directories are created under the configured execution root, which defaults to `<stateDir>/work`.
 
+The Executor Session works in its ticket directory as its cwd and is not registered as a DeepSeek Harness Workspace. Only the main Session has a Workspace, at the state directory, so a person's Workspace list holds their own projects and that one entry rather than one per Ticket.
+
 Executor Sessions run commands without approval as the operator's OS user. Their `dsh-superagent-worker` preset contains the tools needed for work and moves foreground shell commands to background jobs after 5 seconds. This lets a worker receive new messages at the next step instead of waiting for a long command to finish.
 
 The main Session uses `dsh-superagent-router`, with the same 5-second shell and job-wait limits and a smaller tool set for routing. Sessions retain the preset selected at creation. Worker subagents use DeepSeek Harness's `standard` preset.
@@ -92,12 +94,12 @@ Reviews without a body, such as approvals, also arrive as Triggers and can wake 
 ## How a Ticket ends
 
 - **Ready without a pull request:** a `ready` Report ends the Ticket as completed.
-- **Nothing to do:** an Executor that finds no work for a person to act on, such as a request that does not reproduce or is superseded, reports `dropped`. The Ticket ends without a message, unless a matched rule asks for one, and a person's later message on its Threads resumes it.
+- **Nothing to do:** an Executor that finds no work for a person to act on, such as a request that does not reproduce or is superseded, reports `dropped`. The Ticket ends without a message, unless a matched rule asks for one, and a person's later message on one of its Threads resumes it, under the rules below.
 ### Pull requests
 
 A Ticket follows the pull request it started from once its Executor reports it. It also follows each pull request opened from its branch once reported by the Executor or found by the GitHub Source. Reopened pull requests are followed again.
 
-The Ticket is done when none of the pull requests it opened remain open. If it opened none, all pull requests it follows must be closed. It then ends with the outcome of the last relevant close and keeps its Subscriptions, allowing a later human comment to resume it.
+The Ticket is done when none of the pull requests it opened remain open. If it opened none, all pull requests it follows must be closed. It then ends with the outcome of the last relevant close and keeps its Subscriptions to the Threads it follows, except a chat Thread another Ticket still follows (see below), allowing a later human comment there to resume it.
 
 A close does not end the Ticket while resumed, retried or recovered work is unfinished. It also waits if the Executor acknowledged or answered a follow-up it owns but has not since made a non-progress Report or ended a turn after reading that message. A later `ready` Report ends the Ticket once the same pull-request completion rule is satisfied.
 
@@ -113,7 +115,11 @@ An Input counts as read after the Session takes it into a step and subsequently 
 
 Threads followed only for context still deliver messages, but do not give the Ticket ownership of human follow-ups or resume ended Tickets. Those messages can be assessed independently.
 
-Sources poll subscribed Threads while a live Ticket subscribes, and for two weeks after the later of the last Trigger and the subscribing Tickets' end. Afterwards, messages arrive only through ordinary intake: GitHub notifications or Feishu live events.
+### Chat Threads
+
+A chat Thread follows its live Tickets and at most one ended Ticket, so a busy conversation cannot accumulate Tickets that all resume on its next message (`SourceKind.chat`). When a Ticket ends, it drops its own Subscription to a chat Thread that another Ticket still follows. When a Ticket subscribes to a chat Thread, the Thread drops its ended Tickets' Subscriptions. A Ticket that ended alone therefore keeps its Thread for a later follow-up; one that ended while another Ticket followed the same Thread does not. Subscriptions to other Threads, such as a pull request's, stay as they were.
+
+Sources poll subscribed Threads while a live Ticket subscribes, and for two weeks after the later of the last Trigger and the subscribing Tickets' end. A chat Thread stops being polled once its last Subscription is dropped, so after that its messages arrive only through ordinary intake: GitHub notifications or Feishu live events.
 
 ## Failure and recovery
 
