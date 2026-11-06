@@ -1,0 +1,22 @@
+docs/003-execution.md
+  h_18676a549cd52a 80
+docs/008-cookbook.md
+  h_18676a549cd52a 254
+docs/agents/sources.md
+  h_18676a549cd52a 27
+src/app/execution-environment.ts
+  h_18676a549cd52a 31-34,38-39,44,46-47
+tests/gitlab.spec.ts
+  h_18676a549cd52a 9-10,222-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "880faf465bcfdcd64325db2e384f6721f0af6707",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
