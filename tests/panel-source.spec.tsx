@@ -148,7 +148,7 @@ it('shows the account each CLI signs in as, and keeps a saved CLI on screen whil
   await click(github.querySelector<HTMLButtonElement>('.dt-card-toggle')!)
   expect(github.textContent).toContain('当前账号 @agent-bot')
   const labels = () => [...github.querySelectorAll('label')].map(label => label.textContent)
-  expect(labels()).toEqual(['监听的仓库', '智能体的 GitHub CLI'])
+  expect(labels()).toEqual(['监听的仓库', '基线分支', '智能体的 GitHub CLI'])
   expect(field<HTMLInputElement>('监听的仓库').value).toBe('acme/widgets')
   // A fact describes the saved value, so an edited CLI shows none until it is saved.
   await type(field<HTMLInputElement>('智能体的 GitHub CLI'), 'gh-other')
@@ -156,7 +156,7 @@ it('shows the account each CLI signs in as, and keeps a saved CLI on screen whil
   await click(zh.discard)
   expect(github.textContent).toContain('当前账号 @agent-bot')
   await click([...github.querySelectorAll<HTMLElement>('[data-disclosure-row]')].find(row => row.textContent?.includes('高级'))!)
-  expect(labels()).toEqual(['监听的仓库', '智能体的 GitHub CLI', '轮询间隔 / 秒', '连续失败几次后报告异常'])
+  expect(labels()).toEqual(['监听的仓库', '基线分支', '智能体的 GitHub CLI', '轮询间隔 / 秒', '连续失败几次后报告异常'])
   const feishu = all('.dt-card')[0]!
   await click(feishu.querySelector<HTMLButtonElement>('.dt-card-toggle')!)
   expect(feishu.textContent).toContain('当前机器人 Widgets Bot')

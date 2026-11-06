@@ -21,7 +21,12 @@ export type FieldSpec =
   | FieldBase & { type: 'fact'; settings?: 'deployment' }
   | FieldBase & { type: 'rows'; columns: ({ key: string; label: Localized; type: 'text'; pattern?: string; optional?: boolean; choose?: Localized; refresh?: Localized } | { key: string; label: Localized; type: 'select'; options: { value: string; label: Localized }[] })[] }
 
-export interface VariableSpec { key: string; description: Localized }
+/**
+ * A Source's or the Executor's execution variable. `role` marks the variables the Executor combines into the
+ * Ticket-wide `DSH_SUPERAGENT_REPOSITORY` and `DSH_SUPERAGENT_WORK_REF`: the starting repository, the head ref of the
+ * pull or merge request that started the Ticket, or the base branch for Tickets that started without one.
+ */
+export interface VariableSpec { key: string; description: Localized; role?: 'repository' | 'head' | 'base' }
 export interface EnvironmentInput<C> { deployment: Deployment; config: C; trigger?: Trigger }
 export interface AdmissionRowView { id: string; label: Localized | string; note: Localized; cells: { listedUnaddressed: boolean; unlistedAddressed: boolean; unlistedUnaddressed: boolean } }
 /** Policy extension for a source kind, defining allowed senders, admission table rows, and optional external roster sync. */

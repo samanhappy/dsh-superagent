@@ -6,6 +6,8 @@ import { key, type Trigger } from '../src/core/index.ts'
 import { CliError, Commands } from '../src/infra/commands.ts'
 import { HealthBoard } from '../src/infra/health.ts'
 import { SettingsSchema } from '../src/policy.ts'
+import { environmentOf } from '../src/app/execution-environment.ts'
+import { githubKind } from '../src/sources/github.ts'
 import { Store } from '../src/app/store.ts'
 import { sourceContextOf, type SourceContextDeps } from '../src/app/source-context.ts'
 import { sendGitlab } from '../src/sources/gitlab-channel.ts'
@@ -197,3 +199,38 @@ describe('gitlab channel and resources', () => {
     await expect(readGitlab(h.commands, 'gitlab/acme/widgets/unknown/5')).rejects.toThrow('Use gitlab/<project>')
   })
 })
+it('reports the project base branch for Tickets that did not start on a merge request, and the head ref when they did', () => {
+  const config = gitlabKind.schema.parse({ host: HOST, cli: '/path/glab', projects: [{ path: PROJECT }, { path: 'acme/other' }],
+    baseBranches: [{ project: PROJECT, baseBranch: 'dev' }, { project: 'acme/other', baseBranch: 'master' }] })
+  const deployment = testDeployment({ gitlab: { host: HOST, cli: '/path/glab', login: 'agent-bot', id: 7,
+    email: `7-agent-bot@users.noreply.${HOST}`, projects: [PROJECT, 'acme/other'] } })
+  const values = (trigger: Trigger) => gitlabKind.environment!.values({ deployment, config, trigger })
+  expect(values(projectIssueTrigger(issue(5), PROJECT, HOST, 'agent-bot'))).toMatchObject({ DSH_SUPERAGENT_GITLAB_PROJECT: PROJECT,
+    DSH_SUPERAGENT_GITLAB_BASE_BRANCH: 'dev', DSH_SUPERAGENT_GITLAB_MR_HEAD: '' })
+  expect(values(projectMergeRequestTrigger(merge(6), PROJECT, HOST, 'agent-bot'))).toMatchObject({ DSH_SUPERAGENT_GITLAB_PROJECT: PROJECT,
+    DSH_SUPERAGENT_GITLAB_BASE_BRANCH: 'dev', DSH_SUPERAGENT_GITLAB_MR_HEAD: 'refs/merge-requests/6/head' })
+  expect(values(projectIssueTrigger(issue(7), 'acme/other', HOST, 'agent-bot'))).toMatchObject({ DSH_SUPERAGENT_GITLAB_BASE_BRANCH: 'master' })
+})
+
+it('accepts base branches only for watched projects and requires a branch name', () => {
+  const schema = gitlabKind.schema
+  expect(() => schema.parse({ host: HOST, cli: '/path/glab', projects: [{ path: PROJECT }],
+    baseBranches: [{ project: 'acme/other', baseBranch: 'dev' }] })).toThrow('watched project')
+  expect(() => schema.parse({ host: HOST, cli: '/path/glab', projects: [{ path: PROJECT }],
+    baseBranches: [{ project: PROJECT, baseBranch: '' }] })).toThrow()
+})
+it('never combines a repository from one Source with a base branch from another', () => {
+  const settings = SettingsSchema.parse({ executor: { repository: 'acme/default', baseBranch: 'dev' },
+    sources: { github: { enabled: true, config: { repository: 'acme/widgets', cli: '/path/gh', baseBranch: 'release' } },
+      gitlab: { enabled: true, config: { host: HOST, cli: '/path/glab', projects: [{ path: PROJECT }] } } } })
+  const sources = new SourceRegistry(() => settings)
+  sources.register(githubKind); sources.register(gitlabKind)
+  const deployment = testDeployment({ gitlab: { host: HOST, cli: '/path/glab', login: 'agent-bot', id: 7,
+    email: `7-agent-bot@users.noreply.${HOST}`, projects: [PROJECT] } })
+  const trigger = projectIssueTrigger(issue(9), PROJECT, HOST, 'agent-bot')
+  const env = Object.fromEntries(environmentOf({ deployment, sources, settings, ticket: { id: 't9', name: 't9', directory: '/srv/t9' }, trigger })
+    .map(variable => [variable.key, variable.value]))
+  // The GitLab Ticket names its project but has no GitLab base branch: the Executor default applies, not GitHub's `release`.
+  expect(env).toMatchObject({ DSH_SUPERAGENT_REPOSITORY: PROJECT, DSH_SUPERAGENT_WORK_REF: 'refs/heads/dev' })
+})
+

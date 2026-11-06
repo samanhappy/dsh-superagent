@@ -6,7 +6,7 @@
 
 A Source is not done until all of these exist:
 
-1. **The kind and its loop** in `src/sources/<name>.ts`: `schema`, `fields`, `health`, `facts` where setup derives any, and a loop that waits for setup, follows the switch, moves cursors after `receive`, keeps errors per item, reports health and stops on abort.
+1. **The kind and its loop** in `src/sources/<name>.ts`: `schema`, `fields`, `health`, `facts` where setup derives any, `environment` variables (with a `role` on those that name a repository, a pull or merge request head, or a base branch), and a loop that waits for setup, follows the switch, moves cursors after `receive`, keeps errors per item, reports health and stops on abort.
 2. **The Trigger translation**, with stable ids, dropping the agent's own messages.
 3. **The `scope`** that decides what the Source receives, decided from `meta` alone.
 4. **The Channel**, whose `send` posts each message once and answers `gone` only when the conversation can never receive it, and whose optional `check` refuses text the Channel can never accept, such as one over the IM word limit, before Outbox queues a reply.
@@ -24,3 +24,4 @@ A Source is not done until all of these exist:
 - **Name no person, account or organization in code.** Identities come from settings.
 - **Disclose unofficial integrations.** A Source that speaks a protocol not meant for third-party clients must say so in the README and in [006 Deployment](../006-deployment.md), with the account and terms-of-service risk it carries.
 - **A credential belongs to the operator.** It is saved through the panel, never typed into a chat and never logged.
+- **Repository roles come from one Source.** A variable that gives the starting repository (`repository`), a pull or merge request head (`head`), or a base branch for Tickets without one (`base`) sets `role` and is empty for a Ticket from another Source. The Executor takes the roles of one Source as a group into `DSH_SUPERAGENT_REPOSITORY` and `DSH_SUPERAGENT_WORK_REF`, never combining a repository from one Source with a base branch from another; never have a prepare command derive the base from the remote's default branch.

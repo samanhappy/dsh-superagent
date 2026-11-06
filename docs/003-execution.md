@@ -52,7 +52,7 @@ Worker subagents, including nested ones, use DeepSeek Harness's `standard` prese
 
 Before the first Assignment, if the Ticket directory does not exist, the prepare command runs once with `sh` in the execution root. It has ten minutes to finish. Without a prepare command, the worker starts in an empty directory.
 
-A failed command fails the Ticket and records its output. A retry or a person's message on one of the Ticket's Threads tries preparation again. A typical command uses `git worktree` to create a checkout. A pull request belongs to the Ticket when its branch's last path segment matches the Ticket's short name.
+A failed command fails the Ticket and records its output. A retry or a person's message on one of the Ticket's Threads tries preparation again. A typical command uses `git worktree` to create a checkout. It should check out `DSH_SUPERAGENT_WORK_REF`: the head of the pull or merge request that started the Ticket, otherwise `refs/heads/<base branch>` from its Source or the Executor's default base branch. That variable is empty when neither a head nor a base branch is configured, and the command should fail rather than check out the remote's default branch. A pull request belongs to the Ticket when its branch's last path segment matches the Ticket's short name.
 
 ### Concurrency
 
@@ -69,11 +69,17 @@ The prepare command and Executor instructions receive the same execution variabl
 | Variable | Registered by | Value |
 | --- | --- | --- |
 | `DSH_SUPERAGENT_DIR`, `DSH_SUPERAGENT_NAME`, `DSH_SUPERAGENT_TICKET` | Executor | The Ticket's directory, short name and id |
+| `DSH_SUPERAGENT_REPOSITORY`, `DSH_SUPERAGENT_WORK_REF` | Executor | The repository or project of the Ticket, and the ref to check out: a Source's pull or merge request head, or a base branch |
 | `DSH_SUPERAGENT_BLOCKED_COMMANDS` | Executor | Commands the Executor may not run |
 | `DSH_SUPERAGENT_GITHUB_REPOSITORY` | GitHub | The repository the Source watches, `owner/name` |
 | `DSH_SUPERAGENT_GITHUB_ACCOUNT`, `DSH_SUPERAGENT_GITHUB_COMMIT_EMAIL` | GitHub | The agent account and its commit email |
 | `DSH_SUPERAGENT_GITHUB_NUMBER`, `DSH_SUPERAGENT_GITHUB_PR_HEAD` | GitHub | The Issue or pull request that started the Ticket, and its head ref when it is a pull request |
+| `DSH_SUPERAGENT_GITHUB_BASE_BRANCH` | GitHub | The base branch for Tickets that did not start on a pull request; empty when it is not configured |
+| `DSH_SUPERAGENT_GITLAB_PROJECT`, `DSH_SUPERAGENT_GITLAB_MR_HEAD` | GitLab | The project and the merge request head that started the Ticket |
+| `DSH_SUPERAGENT_GITLAB_BASE_BRANCH` | GitLab | The project's base branch for Tickets that did not start on a merge request; empty when it is not configured |
 | `DSH_SUPERAGENT_FEISHU_BOT`, `DSH_SUPERAGENT_FEISHU_CHAT` | Feishu | The bot, and the chat that started the Ticket |
+
+The Source that started the Ticket answers `DSH_SUPERAGENT_REPOSITORY` and `DSH_SUPERAGENT_WORK_REF` as a group; a Ticket from a Source that names no repository takes the first repository Source that does. A role the chosen Source leaves empty becomes the Executor's default repository or base branch, never another Source's value, and an unset work ref stays empty. A Source marks the variables that feed these two with a `role`.
 
 Ticket-specific values come from its directory and originating Trigger. Other values come from the current deployment settings. Only the panel can change execution environment settings; text sent to the main Session cannot change the configured shell command.
 
