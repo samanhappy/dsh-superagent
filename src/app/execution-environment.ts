@@ -28,18 +28,23 @@ export function declaredVariables(sources: SourceRegistry, settings?: Settings):
 
 export function environmentOf(input: { deployment: Deployment; sources: SourceRegistry; settings: Settings; ticket?: { id: string; name: string; directory: string }; trigger?: Trigger }): Variable[] {
   const { deployment, sources, settings, ticket, trigger } = input
-  // Each Source's values are computed once. The Source that started the Ticket answers the combined roles first, so a
-  // deployment that watches several repositories never takes another Source's repository or base branch for this Ticket.
+  // Each Source's values are computed once. Roles are taken from one Source as a group: the Source that started the
+  // Ticket when it names a repository, otherwise the first repository Source that does. A repository from one Source
+  // and a base branch from another would describe unrelated repositories, so a missing role falls to the Executor's
+  // defaults instead of another Source's value.
   const environments = sources.environments(settings).map(item => ({ ...item,
     values: item.environment.values({ deployment, config: item.config, ...trigger ? { trigger } : {} }) }))
   const origin = trigger?.threads[0]?.source
-  const roles: Partial<Record<'repository' | 'head' | 'base', string>> = {}
-  for (const item of [...environments].sort((a, b) => a.kind.kind === origin ? -1 : b.kind.kind === origin ? 1 : 0)) {
+  const rolesOf = (item: typeof environments[number]): Partial<Record<'repository' | 'head' | 'base', string>> => {
+    const roles: Partial<Record<'repository' | 'head' | 'base', string>> = {}
     for (const spec of item.environment.variables) {
       const value = item.values[spec.key] ?? ''
       if (spec.role && value && !roles[spec.role]) roles[spec.role] = value
     }
+    return roles
   }
+  const holders = environments.map(item => ({ kind: item.kind.kind, roles: rolesOf(item) })).filter(holder => holder.roles.repository)
+  const roles = (holders.find(holder => holder.kind === origin) ?? holders[0])?.roles ?? {}
   const base = (roles.base || settings.executor.baseBranch).replace(/^refs\/heads\//, '')
   const executor: Record<string, string> = { DSH_SUPERAGENT_BLOCKED_COMMANDS: settings.executor.blockedCommands.join(' '), ...ticket ? {
     DSH_SUPERAGENT_DIR: ticket.directory, DSH_SUPERAGENT_NAME: ticket.name, DSH_SUPERAGENT_TICKET: ticket.id,

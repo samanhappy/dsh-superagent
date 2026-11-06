@@ -77,7 +77,7 @@ The prepare command and Executor instructions receive the same execution variabl
 | `DSH_SUPERAGENT_GITLAB_BASE_BRANCH` | GitLab | The project's base branch for Tickets that did not start on a merge request; empty when it is not configured |
 | `DSH_SUPERAGENT_FEISHU_BOT`, `DSH_SUPERAGENT_FEISHU_CHAT` | Feishu | The bot, and the chat that started the Ticket |
 
-The Source that started the Ticket answers `DSH_SUPERAGENT_REPOSITORY` and `DSH_SUPERAGENT_WORK_REF` first; other Sources fill what it leaves empty, then the Executor's default repository and base branch, and an unset work ref stays empty. A Source marks the variables that feed these two with a `role`.
+The Source that started the Ticket answers `DSH_SUPERAGENT_REPOSITORY` and `DSH_SUPERAGENT_WORK_REF` as a group; a Ticket from a Source that names no repository takes the first repository Source that does. A role the chosen Source leaves empty becomes the Executor's default repository or base branch, never another Source's value, and an unset work ref stays empty. A Source marks the variables that feed these two with a `role`.
 
 Ticket-specific values come from its directory and originating Trigger. Other values come from the current deployment settings. Only the panel can change execution environment settings; text sent to the main Session cannot change the configured shell command.
 
