@@ -64,10 +64,10 @@ dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，�
 
 它会一次只问一个简短的问题，先把完整计划给你看一遍，然后完成安装与配置。[SETUP.md](SETUP.md) 就是它遵循的步骤。
 
-也可以不克隆仓库，直接安装 npm 上发布的 [`dsh-superagent`](https://www.npmjs.com/package/dsh-superagent) 包：在 setup 建好 profile 之后，把安装这一步换成普通的插件安装即可。
+也可以不克隆仓库，直接安装 npm 上发布的 [`@samanhappy/dsh-superagent`](https://www.npmjs.com/package/@samanhappy/dsh-superagent) 包：在 setup 建好 profile 之后，把安装这一步换成普通的插件安装即可。
 
 ```sh
-dsh plugin --profile superagent add dsh-superagent
+dsh plugin --profile superagent add @samanhappy/dsh-superagent
 ```
 
 包里已带构建产物，因此不需要 `pnpm install`，也不需要额外构建。[docs/006-deployment.md](docs/006-deployment.md) 说明了两种安装路径各自验证了什么。

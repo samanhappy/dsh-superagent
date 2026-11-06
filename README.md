@@ -65,10 +65,10 @@ Setup has many steps, so an agent does it with you. Ask your coding agent:
 
 It asks one short question at a time, shows the full plan once, and then installs and configures everything. [SETUP.md](SETUP.md) is what it follows.
 
-Installation also works without a checkout. The package is published as [`dsh-superagent`](https://www.npmjs.com/package/dsh-superagent) on npm, so the install step can be a normal plugin install into the profile that the setup already created:
+Installation also works without a checkout. The package is published as [`@samanhappy/dsh-superagent`](https://www.npmjs.com/package/@samanhappy/dsh-superagent) on npm, so the install step can be a normal plugin install into the profile that the setup already created:
 
 ```sh
-dsh plugin --profile superagent add dsh-superagent
+dsh plugin --profile superagent add @samanhappy/dsh-superagent
 ```
 
 The package ships the built bundles, so this needs no `pnpm install` or build step. [docs/006-deployment.md](docs/006-deployment.md) covers both install paths and what each one verifies.

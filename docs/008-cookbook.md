@@ -348,7 +348,7 @@ Then export the built file in `package.json` by adding `"./webhook-watch": "./li
 
 ```yaml
     - id: dsh-superagent-webhook
-      name: dsh-superagent/webhook-watch
+      name: '@samanhappy/dsh-superagent/webhook-watch'
       disabled: true
 ```
 

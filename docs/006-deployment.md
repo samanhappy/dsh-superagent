@@ -138,7 +138,7 @@ The package is also published on npm, so the checkout and build steps can be rep
 ```sh
 npm install -g @deepseek-ai/dsh@0.2.1-rc.3
 dsh superagent --from-default-profile web --dump-config > /dev/null
-dsh plugin --profile superagent add dsh-superagent
+dsh plugin --profile superagent add @samanhappy/dsh-superagent
 ```
 
 That package ships the built bundles, so `pnpm install` and `pnpm build` are skipped. Use the `link:$PWD` form above when working on a checkout.
