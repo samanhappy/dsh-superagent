@@ -1,0 +1,28 @@
+README.md
+  h_18676a549cd52a 68,71
+README.zh-CN.md
+  h_18676a549cd52a 67,70
+cordis.patch.yml
+  h_18676a549cd52a 6,8,14,16,18,20,22
+docs/006-deployment.md
+  h_18676a549cd52a 141
+docs/008-cookbook.md
+  h_18676a549cd52a 351
+package.json
+  h_18676a549cd52a 2
+src/infra/paths.ts
+  h_18676a549cd52a 13
+tsdown.config.ts
+  h_18676a549cd52a 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc933f5580a4f077b8c130757564a494a6575203",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
