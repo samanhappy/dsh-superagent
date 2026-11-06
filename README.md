@@ -17,6 +17,15 @@ dsh-superagent is a proactive coding agent for the repositories a team watches, 
 
 It is also a way of working with an agent: **take as little human attention as possible, and give as much value as possible.** An agent that can act for a whole team can also waste a whole team's attention, so it acts only when asked or when a rule the team wrote allows it, and speaks only when someone must act or can use a result. [docs/000-philosophy.md](docs/000-philosophy.md) explains the principle and what it asks of the operator.
 
+## Screenshots
+
+The management panel on a fresh install, before any credential is configured: the deployment checks that gate taking work, the six Sources, and where each Source is set up.
+
+![Overview](assets/screenshots/overview.png)
+![Sources](assets/screenshots/sources.png)
+
+![Settings](assets/screenshots/settings.png)
+
 ## What this fork is for
 
 The upstream project is a reference implementation: one GitHub repository, one optional Feishu source, and code meant to be read and adapted. This fork keeps that design and takes it toward a state where a team can install it as a normal DeepSeek Harness plugin, leave it running, and point it at the channels the team already uses.
@@ -33,7 +42,7 @@ Concretely, on top of upstream:
 This fork tracks a public research prototype, so treat compatibility as a moving target rather than a promise:
 
 - **Upstream may keep changing.** If `deepseek-ai/dsh-superagent-prototype` keeps evolving, its next commits touch the same files this fork extends — `cordis.patch.yml`, the preset rows, the prompt sections, the panel, `package.json` exports, `docs/`, `tests/`. Rebasing onto those changes will conflict, and conflicts in prompt or preset code can change agent behaviour quietly.
-- **DeepSeek Harness is alpha and pinned.** Peer dependencies require `^0.2.1-alpha.2` and the dev dependencies are pinned to it. New DSH releases may change the services these Sources call and the bundle patch format; porting those changes is manual work here, and this fork will lag upstream until it is done.
+- **DeepSeek Harness is alpha and pinned.** Peer dependencies require `^0.2.1-alpha.2` and the dev dependencies are pinned to it. The published bundle is also smoke-tested against the `0.2.2-rc.1` desktop app (install, boot and panel render); treat every further DSH release as unverified until it is tested. New DSH releases may change the services these Sources call and the bundle patch format; porting those changes is manual work here, and this fork will lag upstream until it is done.
 - **A hard fork drifts both ways.** Upstream bug fixes and security fixes do not arrive automatically, and improvements made here (the four added Sources in particular) are unlikely to be upstreamed by the upstream team. There is no guarantee that the two stay compatible.
 - **No wire-level compatibility promise.** Source configuration and the state database belong to this fork; the database schema moves with the code, and a state directory migrated by a newer version cannot be opened by an older one. Back up `stateDir` before upgrading, as [docs/006-deployment.md](docs/006-deployment.md) says.
 
@@ -55,6 +64,14 @@ Setup has many steps, so an agent does it with you. Ask your coding agent:
 > Read SETUP.md in this repository and set up dsh-superagent with me.
 
 It asks one short question at a time, shows the full plan once, and then installs and configures everything. [SETUP.md](SETUP.md) is what it follows.
+
+Installation also works without a checkout. The package is published as [`dsh-superagent`](https://www.npmjs.com/package/dsh-superagent) on npm, so the install step can be a normal plugin install into the profile that the setup already created:
+
+```sh
+dsh plugin --profile superagent add dsh-superagent
+```
+
+The package ships the built bundles, so this needs no `pnpm install` or build step. [docs/006-deployment.md](docs/006-deployment.md) covers both install paths and what each one verifies.
 
 ## Documentation
 

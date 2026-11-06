@@ -133,6 +133,16 @@ dsh plugin --profile superagent add "link:$PWD"
 
 The pinned version above is public; other versions must satisfy `engines.dsh` in `package.json`.
 
+The package is also published on npm, so the checkout and build steps can be replaced by a normal plugin install once the profile exists:
+
+```sh
+npm install -g @deepseek-ai/dsh@0.2.1-rc.3
+dsh superagent --from-default-profile web --dump-config > /dev/null
+dsh plugin --profile superagent add dsh-superagent
+```
+
+That package ships the built bundles, so `pnpm install` and `pnpm build` are skipped. Use the `link:$PWD` form above when working on a checkout.
+
 The fourth command creates `~/.dsh/profiles/superagent` from the DeepSeek Harness Web template. The fifth installs this bundle. Set `DSH_HOME` to relocate the default `~/.dsh` directory.
 
 Run the profile-creation command only for a new installation. If the profile already exists, that command replaces it and deletes its `cordis.patch.yml`, including machine configuration. Do not use it for upgrades.

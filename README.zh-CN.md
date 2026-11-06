@@ -16,6 +16,15 @@ dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，�
 
 它同时也是一种与 agent 协作的方式：**尽可能少占用人的注意力，尽可能多地交付价值。** 能替整个团队行动的 agent，也可能浪费整个团队的注意力，所以它只在被要求时、或团队写下的规则允许时行动，只在有人必须行动或能用到结果时发言。[docs/000-philosophy.md](docs/000-philosophy.md) 解释了这一原则，以及它对运维者提出了什么要求。
 
+## 面板截图
+
+以下截图来自一次全新安装、尚未配置任何凭据的面板：接单前的部署检查、六个 Source，以及每个 Source 的配置位置。
+
+![概览](assets/screenshots/overview.png)
+![来源](assets/screenshots/sources.png)
+
+![设置](assets/screenshots/settings.png)
+
 ## 本 fork 的定位
 
 上游是一个参考实现：一个 GitHub 仓库、一个可选的飞书 Source，代码以阅读和改写为目的。本 fork 保留这套设计，并把它推进到这样的状态：团队可以像安装普通 DeepSeek Harness 插件一样安装它、让它长期运行，并把它接到团队已经在用的渠道上。
@@ -32,7 +41,7 @@ dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，�
 本 fork 跟踪的是一个公开的研究原型，因此请把兼容性当作持续变化的对象，而不是承诺：
 
 - **上游可能继续演进。** 如果 `deepseek-ai/dsh-superagent-prototype` 持续迭代，它的新提交会改到本 fork 扩展的同一批文件——`cordis.patch.yml`、preset 行、prompt 段落、面板、`package.json` 的 exports、`docs/`、`tests/`。rebase 到这些改动上会产生冲突，而 prompt 或 preset 代码的冲突可能在不报错的情况下改变 agent 行为。
-- **DeepSeek Harness 仍是 alpha，且版本锁定。** peer 依赖要求 `^0.2.1-alpha.2`，dev 依赖锁定在该版本。新的 DSH 版本可能改变这些 Source 调用的服务以及 bundle patch 格式；移植这些改动只能手工完成，在完成之前本 fork 会落后于上游。
+- **DeepSeek Harness 仍是 alpha，且版本锁定。** peer 依赖要求 `^0.2.1-alpha.2`，dev 依赖锁定在该版本。发布出去的 bundle 也对 `0.2.2-rc.1` 桌面版做过冒烟验证（安装、启动、面板渲染）；除此之外，每个新的 DSH 版本都应视为未验证，直到测过为止。新的 DSH 版本可能改变这些 Source 调用的服务以及 bundle patch 格式；移植这些改动只能手工完成，在完成之前本 fork 会落后于上游。
 - **硬分叉是双向漂移。** 上游的缺陷修复与安全修复不会自动到达这里；本 fork 的改进（尤其是新增的四个 Source）也基本不会被上游团队合并。两者不保证持续兼容。
 - **不承诺线缆级兼容。** Source 的配置与状态数据库属于本 fork；数据库 schema 随代码演进，被新版本迁移过的状态目录无法被旧版本打开。升级前请按 [docs/006-deployment.md](docs/006-deployment.md) 的说明备份 `stateDir`。
 
@@ -54,6 +63,14 @@ dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，�
 > 阅读本仓库的 SETUP.md，和我一起安装并配置 dsh-superagent。
 
 它会一次只问一个简短的问题，先把完整计划给你看一遍，然后完成安装与配置。[SETUP.md](SETUP.md) 就是它遵循的步骤。
+
+也可以不克隆仓库，直接安装 npm 上发布的 [`dsh-superagent`](https://www.npmjs.com/package/dsh-superagent) 包：在 setup 建好 profile 之后，把安装这一步换成普通的插件安装即可。
+
+```sh
+dsh plugin --profile superagent add dsh-superagent
+```
+
+包里已带构建产物，因此不需要 `pnpm install`，也不需要额外构建。[docs/006-deployment.md](docs/006-deployment.md) 说明了两种安装路径各自验证了什么。
 
 ## 文档
 
