@@ -1,0 +1,68 @@
+docs/001-domain.md
+  h_18676a549cd52a 37
+docs/003-execution.md
+  h_18676a549cd52a 27-28,97,102,118-122
+docs/005-panel.md
+  h_18676a549cd52a 21
+docs/007-architecture.md
+  h_18676a549cd52a 58,81,109,235,618
+src/app/api.ts
+  h_18676a549cd52a 32
+src/app/http.ts
+  h_18676a549cd52a 161,233-237
+src/app/notices.ts
+  h_18676a549cd52a 46-47,61-62
+src/app/runtime.ts
+  h_18676a549cd52a 167-168
+src/app/sessions.ts
+  h_18676a549cd52a 168,173-175,177
+src/app/tools/main.ts
+  h_18676a549cd52a 242-246,248-249
+src/client/locales.ts
+  h_18676a549cd52a 197-199
+src/client/rows.tsx
+  h_18676a549cd52a 10-11,41-44
+src/client/thread.tsx
+  h_18676a549cd52a 128-132,147
+src/core/engine.ts
+  h_18676a549cd52a 152,155-157
+src/core/part.ts
+  h_18676a549cd52a 15-16
+src/core/ports.ts
+  h_18676a549cd52a 96-97
+src/core/tickets.ts
+  h_18676a549cd52a 214,361-366,425-426,429-437
+src/sources/feishu.ts
+  h_18676a549cd52a 34
+src/sources/kind.ts
+  h_18676a549cd52a 125-126
+src/sources/registry.ts
+  h_18676a549cd52a 44-48
+src/sources/wecom.ts
+  h_18676a549cd52a 23
+src/sources/weixin.ts
+  h_18676a549cd52a 32
+tests/core-engine.spec.ts
+  h_18676a549cd52a 14,16,45-46,271-307
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 338-342
+tests/http.spec.ts
+  h_18676a549cd52a 70-80
+tests/panel-trigger.spec.tsx
+  h_18676a549cd52a 66-74
+tests/runtime.spec.ts
+  h_18676a549cd52a 237-243,1261,1272-1273,1275-1278
+tests/tools.spec.ts
+  h_18676a549cd52a 387-388,394-395,442-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb8191a5be3e1e0a1a8ef98c053a849ddcb2c8cb",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
