@@ -217,7 +217,8 @@ it('words each settings save by what it changed from the one before, and nothing
   const alice = { id: 'ou_alice', name: 'Alice Liu' }, bob = { id: 'ou_bob', name: 'Bob' }
   store.saveSettings({ ...first, policy: allowed([alice, bob, { id: 'ou_carol' }]), paused: true,
     sources: { ...first.sources, feishu: { enabled: false, config: {} } },
-    executor: { ...first.executor, directory: '/srv/work', prepare: 'npm ci', blockedCommands: ['rm', 'curl'] } })
+    executor: { ...first.executor, repository: 'acme/widgets', baseBranch: 'dev', directory: '/srv/work', prepare: 'npm ci',
+      blockedCommands: ['rm', 'curl'] } })
   const second = store.settings()
   store.saveSettings({ ...second, policy: allowed([alice, { id: 'ou_carol' }]), paused: false, sources: { ...second.sources,
     feishu: { enabled: true, config: {} } } })
@@ -226,7 +227,8 @@ it('words each settings save by what it changed from the one before, and nothing
   expect(changes(revision - 1)).toEqual([
     { code: 'sourceRowsAdded', source: 'feishu', part: true, field: 'allowed', items: ['Bob', 'ou_carol'] },
     { code: 'sourceRowsChanged', source: 'feishu', part: true, field: 'allowed', items: ['Alice Liu'] },
-    { code: 'paused' }, { code: 'executionDirectory', from: '', to: '/srv/work' }, { code: 'prepareCommand' },
+    { code: 'repository', from: '', to: 'acme/widgets' }, { code: 'baseBranch', from: '', to: 'dev' }, { code: 'paused' },
+    { code: 'executionDirectory', from: '', to: '/srv/work' }, { code: 'prepareCommand' },
     { code: 'blockedCommands', from: '', to: 'rm curl' }, { code: 'sourceDisabled', source: 'feishu' }])
   expect(changes(revision)).toEqual([{ code: 'sourceRowsRemoved', source: 'feishu', part: true, field: 'allowed', items: ['Bob'] },
     { code: 'resumed' }, { code: 'sourceEnabled', source: 'feishu' }])

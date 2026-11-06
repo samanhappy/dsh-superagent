@@ -13,18 +13,24 @@ import { gitlabThreadContext, notePageDesc } from './gitlab-read.ts'
 import { IssueSchema, MergeRequestSchema, SOURCE, diffNote, gitlabRef, gitlabThread, gitlabUrlThread, noteTrigger,
   projectIssueTrigger, projectMergeRequestTrigger, systemNote, type GitlabRef, type GitlabTarget } from './gitlab-trigger.ts'
 import type { Localized, SourceKind } from './kind.ts'
+import { BranchNameSchema, ProjectPathSchema } from '../policy.ts'
 
 export { SOURCE, gitlabPage, gitlabThread, gitlabUrlThread, noteTrigger, projectIssueTrigger, projectMergeRequestTrigger } from './gitlab-trigger.ts'
 export { readGitlab } from './gitlab-read.ts'
 
-const GitlabConfigSchema = GitlabAccountsSchema.extend({
+const GitlabConfigFieldsSchema = GitlabAccountsSchema.extend({
+  // Tickets that did not start on a merge request check out the base branch of their project.
+  baseBranches: z.array(z.object({ project: ProjectPathSchema, baseBranch: BranchNameSchema.refine(branch => branch !== '', 'A branch name') })).default([])
+    .refine(rows => new Set(rows.map(row => row.project.toLowerCase())).size === rows.length, 'Duplicate projects'),
   pollSeconds: z.number().int().min(60).max(3600).default(60),
   failuresBeforeError: z.number().int().min(1).max(20).default(3),
   observeIssues: z.boolean().default(false),
   observeMergeRequests: z.boolean().default(false),
   observeComments: z.boolean().default(false),
 }).strict()
-export type GitlabConfig = z.infer<typeof GitlabConfigSchema>
+const GitlabConfigSchema = GitlabConfigFieldsSchema.refine(config => config.baseBranches.every(row => config.projects.some(project => sameName(project.path, row.project))),
+  'Base branches must name a watched project')
+export type GitlabConfig = z.infer<typeof GitlabConfigFieldsSchema>
 const OBSERVED = { issues: 'observeIssues', mergeRequests: 'observeMergeRequests', comments: 'observeComments' } as const
 type Scope = keyof typeof OBSERVED
 function scopeOf(meta: Record<string, unknown>): Scope | undefined {
@@ -50,6 +56,10 @@ export const gitlabKind: SourceKind<GitlabConfig> = {
     { key: 'projects', type: 'rows', label: { zh: '监听的项目', en: 'Projects' },
       hint: { zh: '写作 group/project。来源接收这些项目的 Issue、合并请求和评论；智能体需要每个项目的 Developer 或更高权限。', en: 'Written group/project. The Source receives issues, merge requests and comments of these projects; the agent needs Developer or higher on each.' },
       columns: [{ key: 'path', type: 'text', label: { zh: '项目', en: 'Project' }, pattern: '[A-Za-z0-9_.\\-]+(/[A-Za-z0-9_.\\-]+)*' }] },
+    { key: 'baseBranches', type: 'rows', label: { zh: '基线分支', en: 'Base branches' },
+      hint: { zh: '不是 MR 的工单按项目从这个分支开始；未列出的项目用执行器的默认基线分支。MR 工单始终检出 MR 的 head。', en: 'Tickets that are not merge requests start from this branch per project; a project not listed here uses the Executor\'s default base branch. A merge request ticket always checks out its head.' },
+      columns: [{ key: 'project', type: 'text', label: { zh: '项目', en: 'Project' }, pattern: '[A-Za-z0-9_.\\-]+(/[A-Za-z0-9_.\\-]+)*' },
+        { key: 'baseBranch', type: 'text', label: { zh: '分支', en: 'Branch' }, pattern: '[A-Za-z0-9._/-]+' }] },
     { key: 'observeIssues', type: 'switch', label: { zh: '接收项目里的新 Issue', en: 'Receive new Issues in the projects' },
       hint: { zh: '打开后，没有 @ 智能体的新 Issue 也会收到，由策略的接收表决定是否成为候选。从打开的时候开始，不读以前的。', en: 'New Issues that do not mention the agent are received too, and the Policy\'s admission table decides whether they become candidates. Starts when switched on; earlier ones are not read.' } },
     { key: 'observeMergeRequests', type: 'switch', label: { zh: '接收项目里的新合并请求', en: 'Receive new merge requests in the projects' },
@@ -81,7 +91,7 @@ export const gitlabKind: SourceKind<GitlabConfig> = {
       columns: [{ key: 'id', type: 'text', label: { zh: '账号', en: 'Account' }, pattern: '[A-Za-z0-9_.\\-]+' }] }],
     explicit: { zh: '名单里的账号在 Issue、合并请求或评论里 @ 智能体的账号。', en: 'An account on the list mentions the agent\'s account in an Issue, a merge request, or a comment.' },
     rows(stored) {
-      const config = GitlabConfigSchema.partial().parse(stored)
+      const config = GitlabConfigFieldsSchema.partial().parse(stored)
       const note = (observed: boolean | undefined) => observed ? { zh: '全部', en: 'All' } : { zh: '仅 @', en: '@ only' }
       const row = (id: Scope, label: { zh: string; en: string }) => ({ id, label, note: note(config[OBSERVED[id]]),
         cells: { listedUnaddressed: !!config[OBSERVED[id]], unlistedAddressed: true, unlistedUnaddressed: !!config[OBSERVED[id]] } })
@@ -92,19 +102,22 @@ export const gitlabKind: SourceKind<GitlabConfig> = {
   environment: {
     variables: [
       { key: 'DSH_SUPERAGENT_GITLAB_HOST', description: { zh: '这个来源连接的 GitLab 实例域名；glab 也以它为准', en: 'The GitLab instance this Source connects to; glab uses it too' } },
-      { key: 'DSH_SUPERAGENT_GITLAB_PROJECT', description: { zh: '接下工单的项目 group/project；工单不是从 GitLab 来的时为空', en: 'The group/project of the issue or merge request that started the ticket; empty when the ticket did not start on GitLab' } },
+      { key: 'DSH_SUPERAGENT_GITLAB_PROJECT', role: 'repository', description: { zh: '接下工单的项目 group/project；工单不是从 GitLab 来的时为空', en: 'The group/project of the issue or merge request that started the ticket; empty when the ticket did not start on GitLab' } },
       { key: 'DSH_SUPERAGENT_GITLAB_ACCOUNT', description: { zh: '智能体的 GitLab 账号；glab 以它登录，除合并外的 GitLab 操作都用 glab，不用其他账号或凭据', en: 'The agent\'s GitLab account. glab is signed in to it; use glab for every GitLab operation except merging, and never another account or credential' } },
       { key: 'DSH_SUPERAGENT_GITLAB_COMMIT_EMAIL', description: { zh: '智能体账号的提交邮箱。这里的 git 没有身份：按提示词写明的作者提交，没有写明时用智能体账号和这个邮箱', en: 'Commit email of the agent\'s account. git has no identity here: commit as the author these instructions name, or as the agent\'s account with this email when they name none' } },
       { key: 'DSH_SUPERAGENT_GITLAB_IID', description: { zh: '接下工单的 Issue 或合并请求的 iid；工单不是从 GitLab 来的时为空', en: 'The iid of the Issue or merge request that started the ticket; empty when the ticket did not start on GitLab' } },
       { key: 'DSH_SUPERAGENT_GITLAB_TARGET', description: { zh: '接下工单的对象是 issues 还是 merge_requests；工单不是从 GitLab 来的时为空', en: 'Whether the ticket started from issues or merge_requests; empty when it did not start on GitLab' } },
-      { key: 'DSH_SUPERAGENT_GITLAB_MR_HEAD', description: { zh: '接下工单的合并请求的 head 引用 refs/merge-requests/<iid>/head；不是合并请求时为空', en: 'Head ref refs/merge-requests/<iid>/head of the merge request that started the ticket; empty when it was not a merge request' } },
+      { key: 'DSH_SUPERAGENT_GITLAB_MR_HEAD', role: 'head', description: { zh: '接下工单的合并请求的 head 引用 refs/merge-requests/<iid>/head；不是合并请求时为空', en: 'Head ref refs/merge-requests/<iid>/head of the merge request that started the ticket; empty when it was not a merge request' } },
+      { key: 'DSH_SUPERAGENT_GITLAB_BASE_BRANCH', role: 'base', description: { zh: '不是合并请求的工单按项目从这个分支开始；项目未配置基线分支时为空', en: 'The branch Tickets that are not merge requests start from for their project; empty when that project has no base branch configured' } },
     ],
-    values: ({ deployment, trigger }) => {
+    values: ({ deployment, config, trigger }) => {
       const ref = trigger?.source === SOURCE ? gitlabRef(trigger) : undefined
+      const base = ref ? config.baseBranches.find(row => sameName(row.project, ref.project))?.baseBranch ?? '' : ''
       return { DSH_SUPERAGENT_GITLAB_HOST: deployment.gitlab?.host ?? '', DSH_SUPERAGENT_GITLAB_PROJECT: ref?.project ?? '',
         DSH_SUPERAGENT_GITLAB_ACCOUNT: deployment.gitlab?.login ?? '', DSH_SUPERAGENT_GITLAB_COMMIT_EMAIL: deployment.gitlab?.email ?? '',
         DSH_SUPERAGENT_GITLAB_IID: ref ? String(ref.iid) : '', DSH_SUPERAGENT_GITLAB_TARGET: ref ? (ref.target === 'issue' ? 'issues' : 'merge_requests') : '',
-        DSH_SUPERAGENT_GITLAB_MR_HEAD: ref?.target === 'mergeRequest' ? `refs/merge-requests/${ref.iid}/head` : '' }
+        DSH_SUPERAGENT_GITLAB_MR_HEAD: ref?.target === 'mergeRequest' ? `refs/merge-requests/${ref.iid}/head` : '',
+        DSH_SUPERAGENT_GITLAB_BASE_BRANCH: base }
     },
   },
   facts: (deployment): Record<string, Localized | string> => deployment?.gitlab ? {

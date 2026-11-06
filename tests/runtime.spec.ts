@@ -492,6 +492,26 @@ it('treats GitHub comments through the same gate: mentions by members are explic
   expect(runtime.store.tickets.get(ticket.id)!.inputs).toEqual([expect.objectContaining({ triggerId: 'ci-1' })])
 })
 
+it('derives the repository and work ref for a prepare command from the origin PR head, the Source base branch or the Executor default', async () => {
+  const env = (ticketId: string) => Object.fromEntries(runtime.ticketEnvironment(runtime.store.tickets.get(ticketId)!).map(variable => [variable.key, variable.value]))
+  const settings = runtime.store.settings()
+  runtime.store.saveSettings({ ...settings, executor: { ...settings.executor, repository: 'acme/default', baseBranch: 'dev' },
+    sources: { ...settings.sources, github: { ...settings.sources.github!, config: { ...(settings.sources.github!.config as Record<string, unknown>), baseBranch: 'release' } } } })
+  // A chat Ticket: the GitHub Source names the repository, and its base branch serves Tickets without a pull request.
+  const chat = await acceptedTicket()
+  expect(env(chat.ticket.id)).toMatchObject({ DSH_SUPERAGENT_REPOSITORY: 'acme/widgets', DSH_SUPERAGENT_WORK_REF: 'refs/heads/release' })
+  // A pull request Ticket: its head ref wins over any base branch.
+  const mention = commentTrigger({ id: 3, body: '@agent-bot please fix', user: { login: 'alice' }, html_url: 'https://github.com/acme/widgets/pull/7#issuecomment-3', created_at: '2026-09-09T00:02:00Z' },
+    { number: 7, isPr: true }, 'conversation', 'agent-bot')
+  await receive(mention)
+  const result = await route({ kind: 'accept', trigger_id: mention.id, title: 'Fix PR 7', worktree_name: 'fix-pr', acknowledgement: 'On it: fixing the review finding.' })
+  expect(env((result.ticket as { ticket_id: string }).ticket_id)).toMatchObject({ DSH_SUPERAGENT_REPOSITORY: 'acme/widgets', DSH_SUPERAGENT_WORK_REF: 'refs/pull/7/head' })
+  // Without a repository Source, the Executor's defaults fill in for a chat Ticket.
+  runtime.store.saveSettings({ ...runtime.store.settings(), sources: { ...runtime.store.settings().sources, github: { enabled: false, config: {} } } })
+  const fallback = await acceptedTicket(feishu('2', '@bot 再修一个回归'))
+  expect(env(fallback.ticket.id)).toMatchObject({ DSH_SUPERAGENT_REPOSITORY: 'acme/default', DSH_SUPERAGENT_WORK_REF: 'refs/heads/dev' })
+})
+
 it('relays an allowed sender\'s mention in a new Issue as an explicit candidate from the poll that reads its notification', async () => {
   const issue = { id: 1012, number: 12, title: 'Login fails', body: '@agent-bot please fix the login', state: 'open',
     created_at: '2026-09-09T00:00:00Z', html_url: 'https://github.com/acme/widgets/issues/12', user: { login: 'alice', type: 'User' } }
