@@ -378,12 +378,12 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/wecom-trigger.ts` | WeCom callbacks as Triggers, conversation addresses and the text a media message shows |
 | `src/sources/wecom-image.ts` | Reads a WeCom message's image: downloads the encrypted URL the callback carries, decrypts it with the message's `aeskey` and commits it as an attachment for the assessing Session |
 | `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, `sent` or `gone` |
-| `src/sources/wecom-read.ts` | The conversation window the Source remembers with each message's images, read as `wecomThreadContext` |
+| `src/sources/wecom-read.ts` | The conversation window the Source remembers with each message's images, recovered from the Triggers stored on the Thread after a restart, read as `wecomThreadContext` |
 | `src/sources/weixin.ts` | The WeChat kind and plugin entry, exported as `./weixin-watch`: the iLink bot long poll, kept running with backoff and health, and its login button |
 | `src/sources/weixin-api.ts` | The iLink bot API: request headers and `base_info`, `getupdates` long polling with its cursor, `sendmessage`, and the stale-token (`-14`) error |
 | `src/sources/weixin-trigger.ts` | WeChat messages as Triggers, direct-chat addresses and the text a media message shows |
 | `src/sources/weixin-channel.ts` | The WeChat Channel: text replies through the account the long poll authenticated with, `sent` or `gone` |
-| `src/sources/weixin-read.ts` | The conversation window the Source remembers, and the latest reply `context_token` of each peer, read as `weixinThreadContext` |
+| `src/sources/weixin-read.ts` | The conversation window the Source remembers, recovered from the Triggers stored on the Thread after a restart, and the latest reply `context_token` of each peer, read as `weixinThreadContext` |
 | `src/sources/weixin-login.ts` | The WeChat QR login the panel drives: fetching and refreshing the code, polling its status, the verification code, and the SVG the card shows |
 | `src/sources/gitlab.ts` | The GitLab kind and plugin entry, exported as `./gitlab-watch`: a poll round of each verified project's issues and merge requests with their notes, and subscribed Threads |
 | `src/sources/gitlab-trigger.ts` | GitLab notes, Issue bodies and merge request descriptions as Triggers, and GitLab addresses |

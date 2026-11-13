@@ -11,13 +11,15 @@ import { SettingsSchema, settingsPolicy } from '../src/policy.ts'
 import { sourceContextOf, type SourceContextDeps } from '../src/app/source-context.ts'
 import { Store } from '../src/app/store.ts'
 import { SourceRegistry } from '../src/sources/registry.ts'
+import { bindWeixinTranscript, forgetWeixin, weixinThreadContext, weixinTranscriptFrom } from '../src/sources/weixin-read.ts'
 import { STALE_TOKEN_NOTE, WeixinConfigSchema, apply, pollWeixin, runWeixin, weixinKind } from '../src/sources/weixin.ts'
 import { testDeployment } from './fixtures/deployment.ts'
 
 const TOKEN = 'bot-token-1'
 const account = { token: TOKEN }
 const directories: string[] = []
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }) })
+afterEach(() => { bindWeixinTranscript(undefined); vi.useRealTimers(); vi.unstubAllGlobals();
+  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }) })
 
 /** A Store with the WeChat Source configured, its kind registered, and a SourceContext whose `receive` reaches a real Engine. */
 function host(options: { enabled?: boolean; overrides?: Partial<SourceContextDeps> } = {}) {
@@ -92,6 +94,22 @@ describe('weixin poll round', () => {
     // A replay of the same cursor stores nothing new, so a restart cannot duplicate work.
     expect(await pollWeixin(h.ctx, account, 20_000, new AbortController().signal)).toEqual({ read: 1, timeoutMs: 20_000 })
     expect(await h.receive.mock.results[1]!.value).toBe('duplicate')
+    h.store.close()
+  })
+
+  it('recovers the peer\'s window from the Triggers already stored after a restart', async () => {
+    const h = host()
+    answer(() => ({ ret: 0, msgs: [message('m1'), message('m2', { create_time_ms: Date.parse('2026-09-09T00:01:00Z'),
+      item_list: [{ type: 1, text_item: { text: 'and the tests' } }] })], get_updates_buf: 'buf-1' }))
+    await pollWeixin(h.ctx, account, 35_000, new AbortController().signal)
+    // A restart drops the live window; the stored Triggers are what the reader has left.
+    forgetWeixin()
+    const release = bindWeixinTranscript((thread, limit) => weixinTranscriptFrom(h.ctx.triggers.recent(thread, limit)))
+    const trigger = h.store.triggers.get(key('weixin', 'm2'))!
+    const page = await weixinThreadContext.read({} as never, trigger, 'thread', undefined, account)
+    expect(page.messages.map(item => [item.id, item.text])).toEqual([['m1', 'Please fix the build'], ['m2', 'and the tests']])
+    release()
+    expect(await weixinThreadContext.read({} as never, trigger, 'thread', undefined, account)).toMatchObject({ messages: [] })
     h.store.close()
   })
 

@@ -12,7 +12,7 @@ import type { SourceRegistry } from './registry.ts'
 import { getUpdates, isStaleToken } from './weixin-api.ts'
 import { sendWeixin, setActiveWeixin, weixinLink } from './weixin-channel.ts'
 import { weixinLogin } from './weixin-login.ts'
-import { rememberToken, rememberWeixin, weixinThreadContext } from './weixin-read.ts'
+import { bindWeixinTranscript, rememberToken, rememberWeixin, weixinThreadContext, weixinTranscriptFrom } from './weixin-read.ts'
 import { SOURCE, weixinPeer, weixinTrigger } from './weixin-trigger.ts'
 
 /** The Source's configuration is the bot account the panel logs in; the long poll uses nothing else. */
@@ -78,10 +78,12 @@ export function apply(ctx: Context): void {
   ctx.effect(() => {
     const controller = new AbortController()
     const source = sourceContext(ctx.orchestrator, weixinKind)
+    // An assessment after a restart reads the conversation back from the Triggers already stored on the peer's Thread.
+    const release = bindWeixinTranscript((thread, limit) => weixinTranscriptFrom(source.triggers.recent(thread, limit)))
     // DSH ends its process on an unhandled rejection, so a failure that escapes the loop becomes the Source's health.
     const running = runWeixin(source, controller.signal)
       .catch((error: unknown) => { source.report(SOURCE, { state: 'error', detail: String(error) }) })
-    return async () => { controller.abort(); await running }
+    return async () => { controller.abort(); await running; release() }
   })
 }
 /**

@@ -63,7 +63,13 @@ export interface SourceContext {
     /** Reports that a followed Thread closed at `at`; each open ticket following it ends once no `own` Thread remains open and no resumed work is still running. */
     threadClosed(thread: ThreadRef, outcome: 'merged' | 'closed', at: string): void
   }
-  triggers: { get(id: string): Trigger | undefined; /** The newest Trigger on a Thread. */ latest(thread: string): Trigger | undefined }
+  triggers: {
+    get(id: string): Trigger | undefined
+    /** The newest Trigger on a Thread. */
+    latest(thread: string): Trigger | undefined
+    /** Up to `limit` recent Triggers on a Thread, oldest first. */
+    recent(thread: string, limit: number): Trigger[]
+  }
   notify(message: OutboundMessage): void
   /** Reports the state of one of this kind's declared health entries; throws for undeclared entry names. */
   report(entry: string, health: Health): void

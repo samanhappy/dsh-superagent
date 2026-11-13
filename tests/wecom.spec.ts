@@ -2,10 +2,11 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { WebSocketServer } from 'ws'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { threadKey } from '../src/core/index.ts'
 import { triggerMessage } from '../src/executor/dsh.ts'
 import { WecomConfigSchema } from '../src/sources/wecom.ts'
 import { sendWecom, truncateWecom, WECOM_MARKDOWN_MAX_BYTES } from '../src/sources/wecom-channel.ts'
-import { forgetWecom, rememberWecom, wecomThreadContext } from '../src/sources/wecom-read.ts'
+import { bindWecomTranscript, forgetWecom, rememberWecom, wecomThreadContext, WECOM_RECENT_MESSAGES } from '../src/sources/wecom-read.ts'
 import { wecomText, wecomTrigger, wecomTriggerId } from '../src/sources/wecom-trigger.ts'
 import { setActiveWecom, WecomConnection, type SocketListener, type WecomFrame, type WecomSocketLike } from '../src/sources/wecom-ws.ts'
 
@@ -196,7 +197,24 @@ describe('wecom channel', () => {
 describe('wecom thread context', () => {
   const read = (trigger: NonNullable<ReturnType<typeof wecomTrigger>>, part: 'thread' | 'root' | 'parent') =>
     wecomThreadContext.read({} as never, trigger, part, undefined, WecomConfigSchema.parse({}))
-  afterEach(() => forgetWecom())
+  afterEach(() => { bindWecomTranscript(undefined); forgetWecom() })
+  it('recovers the window from the Triggers stored on the conversation after a restart', async () => {
+    const asked: { thread: string; limit: number }[] = []
+    bindWecomTranscript((thread, limit) => {
+      asked.push({ thread, limit })
+      return [
+        { id: 'm-0', from: 'user-0', at: '2025-12-31T23:59:00.000Z', text: 'earlier' },
+        { id: 'm-2', from: 'user-2', at: '2026-01-01T00:01:00.000Z', text: 'stored' },
+      ]
+    })
+    // A restart empties the live window; only the message the new process received is remembered in it.
+    rememberWecom('chat-1', { id: 'm-2', from: 'user-2', at: '2026-01-01T00:01:00.000Z', text: 'second' })
+    const trigger = wecomTrigger(message({ msgid: 'm-2', chattype: 'group', chatid: 'chat-1' }), 'bot-1')!
+    const thread = await read(trigger, 'thread')
+    expect(asked).toEqual([{ thread: threadKey(trigger.threads[0]!), limit: WECOM_RECENT_MESSAGES }])
+    expect(thread.messages.map(item => [item.id, item.text])).toEqual([['m-0', 'earlier'], ['m-2', 'second']])
+    expect((await read(trigger, 'root')).messages).toMatchObject([{ id: 'm-0' }])
+  })
   it('reads the remembered window of the conversation', async () => {
     rememberWecom('chat-1', { id: 'm-1', from: 'user-1', at: '2026-01-01T00:00:00.000Z', text: 'first' })
     rememberWecom('chat-1', { id: 'm-2', from: 'user-2', at: '2026-01-01T00:01:00.000Z', text: 'second' })

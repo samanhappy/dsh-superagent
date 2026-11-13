@@ -87,6 +87,14 @@ it('reads the image of a message its conversation remembers, through the WeCom t
   expect(result).toMatchObject({ source_message_id: 'm-1', image_key: 'img-1', image: ref })
 })
 
+it('says the image is gone when the conversation no longer holds its reference, as after a restart', async () => {
+  rememberWecom('user-1', { id: 'm-1', from: 'user-1', at: '2026-01-01T00:00:00.000Z', text: '[图片]' })
+  const trigger = wecomTrigger(message(), 'bot-1')!
+  await expect(wecomThreadContext.image!(agent, commands, trigger, { id: 'm-1', text: '[图片]' }, 'img-1', tmpdir(), signal()))
+    .rejects.toThrow('no longer available')
+  expect(requests).toBe(0)
+})
+
 it('refuses a key the message does not carry, and a model that cannot see images', async () => {
   const refs = wecomImages(message({ image: { url: url(), aeskey } }))
   await expect(readWecomImage(agent, refs, 'img-2', 'm-1', signal())).rejects.toThrow('no such image')

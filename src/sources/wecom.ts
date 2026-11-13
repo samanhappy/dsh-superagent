@@ -6,7 +6,7 @@ import { WecomBotSchema } from '../deployment.ts'
 import { checkedImText } from '../infra/text.ts'
 import { pause } from './poll.ts'
 import { wecomLink, sendWecom } from './wecom-channel.ts'
-import { rememberWecom, wecomThreadContext } from './wecom-read.ts'
+import { bindWecomTranscript, rememberWecom, wecomThreadContext, wecomTranscriptFrom } from './wecom-read.ts'
 import { SOURCE, wecomChat, wecomImages, wecomTrigger } from './wecom-trigger.ts'
 import { setActiveWecom, WecomConnection, type WecomFrame, type WecomRobot } from './wecom-ws.ts'
 import { health, sourceContext, type SourceContext } from './host.ts'
@@ -70,10 +70,12 @@ export function apply(ctx: Context): void {
   ctx.effect(() => {
     const controller = new AbortController()
     const source = sourceContext(ctx.orchestrator, wecomKind)
+    // An assessment after a restart reads the conversation back from the Triggers already stored on its Thread.
+    const release = bindWecomTranscript((thread, limit) => wecomTranscriptFrom(source.triggers.recent(thread, limit)))
     // DSH ends its process on an unhandled rejection, so a failure that escapes the loop becomes the Source's health.
     const running = runWecom(source, controller.signal)
       .catch((error: unknown) => { source.report('wecom', { state: 'error', detail: String(error) }) })
-    return async () => { controller.abort(); await running }
+    return async () => { controller.abort(); await running; release() }
   })
 }
 /** True when the loop's configuration still matches the connection's bot. */

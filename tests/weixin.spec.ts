@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { key, type OutboundMessage, type Trigger } from '../src/core/index.ts'
+import { key, threadKey, type OutboundMessage, type Trigger } from '../src/core/index.ts'
 import { triggerMessage } from '../src/executor/dsh.ts'
 import { getUpdates, ilinkHeaders, isStaleToken, sendMessage, WeixinApiError, WEIXIN_API_BASE, WEIXIN_CHANNEL_VERSION }
   from '../src/sources/weixin-api.ts'
 import { activeWeixin, sendWeixin, setActiveWeixin, weixinLink } from '../src/sources/weixin-channel.ts'
-import { forgetWeixin, rememberToken, rememberWeixin, weixinThreadContext, weixinToken, weixinTranscript } from '../src/sources/weixin-read.ts'
+import { bindWeixinTranscript, forgetWeixin, rememberToken, rememberWeixin, weixinThreadContext, weixinToken, weixinTranscript,
+  WEIXIN_RECENT_MESSAGES } from '../src/sources/weixin-read.ts'
 import { WeixinMessageSchema, weixinMessageId, weixinPeer, weixinQuote, weixinText, weixinThreadId, weixinTime, weixinTrigger, weixinTriggerId }
   from '../src/sources/weixin-trigger.ts'
 
@@ -34,6 +35,7 @@ const stubLongPoll = () => vi.stubGlobal('fetch', vi.fn((_url: string, init: Req
 })))
 afterEach(() => {
   setActiveWeixin(undefined)
+  bindWeixinTranscript(undefined)
   forgetWeixin()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -244,6 +246,23 @@ describe('weixin channel', () => {
 describe('weixin thread context', () => {
   const read = (trigger: Trigger, part: 'thread' | 'root' | 'parent') =>
     weixinThreadContext.read({} as never, trigger, part, undefined, { token: 'bot-token' })
+  it('recovers the window from the Triggers stored on the peer\'s Thread after a restart', async () => {
+    const asked: { thread: string; limit: number }[] = []
+    bindWeixinTranscript((thread, limit) => {
+      asked.push({ thread, limit })
+      return [
+        { id: 'm-0', from: 'user-1', at: '2025-12-31T23:59:00.000Z', text: 'earlier' },
+        { id: 'm-2', from: 'user-1', at: '2026-01-01T00:01:00.000Z', text: 'stored' },
+      ]
+    })
+    // A restart empties the live window; only the message the new process received is remembered in it.
+    rememberWeixin('user-1', { id: 'm-2', from: 'user-1', at: '2026-01-01T00:01:00.000Z', text: 'second' })
+    const trigger = triggerOf({ message_id: 'm-2' })
+    const thread = await read(trigger, 'thread')
+    expect(asked).toEqual([{ thread: threadKey(trigger.threads[0]!), limit: WEIXIN_RECENT_MESSAGES }])
+    expect(thread.messages.map(item => [item.id, item.text])).toEqual([['m-0', 'earlier'], ['m-2', 'second']])
+    expect((await read(trigger, 'root')).messages).toMatchObject([{ id: 'm-0' }])
+  })
   it('reads the remembered window of the peer, oldest first and without duplicates', async () => {
     rememberWeixin('user-1', { id: 'm-1', from: 'user-1', at: '2026-01-01T00:00:00.000Z', text: 'first' })
     rememberWeixin('user-1', { id: 'm-2', from: 'user-1', at: '2026-01-01T00:01:00.000Z', text: 'second' })
