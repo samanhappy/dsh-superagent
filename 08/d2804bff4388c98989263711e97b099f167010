@@ -1,0 +1,36 @@
+docs/003-execution.md
+  h_18676a549cd52a 118,120
+docs/004-prompts.md
+  h_18676a549cd52a 80
+docs/007-architecture.md
+  h_18676a549cd52a 550,574
+prompts/dispatch.md
+  h_18676a549cd52a 34
+prompts/replies.md
+  h_18676a549cd52a 20
+prompts/work.md
+  h_18676a549cd52a 9
+src/app/tools/executor.ts
+  h_18676a549cd52a 30
+src/app/tools/main.ts
+  h_18676a549cd52a 225,227
+src/core/replies.ts
+  h_18676a549cd52a 88-91
+tests/cards.spec.ts
+  h_18676a549cd52a 56-61
+tests/core-engine.spec.ts
+  h_18676a549cd52a 1090-1105
+tests/model-surface.spec.ts
+  h_18676a549cd52a 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08d2804bff4388c98989263711e97b099f167010",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
