@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { key, type OutboundMessage, type Trigger } from '../src/core/index.ts'
+import { triggerMessage } from '../src/executor/dsh.ts'
 import { getUpdates, ilinkHeaders, isStaleToken, sendMessage, WeixinApiError, WEIXIN_API_BASE, WEIXIN_CHANNEL_VERSION }
   from '../src/sources/weixin-api.ts'
 import { activeWeixin, sendWeixin, setActiveWeixin, weixinLink } from '../src/sources/weixin-channel.ts'
@@ -85,6 +86,7 @@ describe('weixin trigger', () => {
     expect(weixinQuote(quoted({ type: 2 }))).toBe('[图片]')
     const trigger = weixinTrigger(message({ item_list: [{ type: 1, ref_msg: { message_item: { type: 1, text_item: { text: 'earlier' } } } }] }))!
     expect(trigger.meta.quote).toBe('earlier')
+    expect(triggerMessage(trigger, {}).quoted).toBe('earlier')
   })
   it('falls back to now for a message without a timestamp', () => {
     const now = weixinTime(WeixinMessageSchema.parse({ from_user_id: 'user-1' }))

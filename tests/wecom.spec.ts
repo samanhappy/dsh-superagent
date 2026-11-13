@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { WebSocketServer } from 'ws'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { triggerMessage } from '../src/executor/dsh.ts'
 import { WecomConfigSchema } from '../src/sources/wecom.ts'
 import { sendWecom, truncateWecom, WECOM_MARKDOWN_MAX_BYTES } from '../src/sources/wecom-channel.ts'
 import { forgetWecom, rememberWecom, wecomThreadContext } from '../src/sources/wecom-read.ts'
@@ -73,6 +74,16 @@ describe('wecom trigger', () => {
   it('keeps the quoted message as text, because WeCom sends no id for it', () => {
     const trigger = wecomTrigger(message({ quote: { msgtype: 'text', text: { content: 'the earlier request' } } }), 'bot-1')!
     expect(trigger.meta.quote).toBe('the earlier request')
+  })
+  it('reads a mixed, image or file quote, and shows the quote in the trigger message', () => {
+    const trigger = wecomTrigger(message({ quote: { msgtype: 'mixed', mixed: { msg_item: [
+      { msgtype: 'text', text: { content: 'look at this' } }, { msgtype: 'image' }] } } }), 'bot-1')!
+    expect(trigger.meta.quote).toBe('look at this\n[图片]')
+    expect(triggerMessage(trigger, {}).quoted).toBe('look at this [图片]')
+    expect(wecomTrigger(message({ quote: { msgtype: 'image' } }), 'bot-1')!.meta.quote).toBe('[图片]')
+    expect(wecomTrigger(message({ quote: { msgtype: 'file' } }), 'bot-1')!.meta.quote).toBe('[文件]')
+    expect(wecomTrigger(message({ quote: { msgtype: 'mixed', mixed: { msg_item: [] } } }), 'bot-1')!.meta).not.toHaveProperty('quote')
+    expect(triggerMessage(wecomTrigger(message(), 'bot-1')!, {})).not.toHaveProperty('quoted')
   })
 })
 

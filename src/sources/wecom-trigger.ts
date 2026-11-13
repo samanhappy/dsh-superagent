@@ -45,16 +45,18 @@ export function wecomTime(value: number | undefined): string {
 /** The marker a media message shows; a mixed message's items use the same ones so its text and its images stay aligned. */
 const MARKERS: Record<string, string> = { image: '[图片]', file: '[文件]', video: '[视频]', voice: '[语音]' }
 const marker = (type: string | undefined): string => MARKERS[type ?? ''] ?? `[${type ?? 'unknown'}]`
+/** The text of a mixed message's items, in order: text as written, media as its marker. */
+const mixedText = (items: readonly unknown[]): string => items.map(item => {
+  const entry = item as { msgtype?: string; text?: { content?: string } }
+  // Only an image item becomes the marker `wecomImages` has a reference for; anything else keeps its own marker.
+  return entry.msgtype === 'text' ? entry.text?.content ?? '' : marker(entry.msgtype)
+}).filter(text => text.length > 0).join('\n')
 /** Reads the text of a message the bot may act on; media becomes a marker, and a transcribed voice message its text. */
 export function wecomText(message: WecomMessage): string {
   switch (message.msgtype) {
     case 'text': return message.text?.content ?? ''
     case 'voice': return message.voice?.content ?? marker('voice')
-    case 'mixed': return message.mixed?.msg_item.map(item => {
-      const entry = item as { msgtype?: string; text?: { content?: string } }
-      // Only an image item becomes the marker `wecomImages` has a reference for; anything else keeps its own marker.
-      return entry.msgtype === 'text' ? entry.text?.content ?? '' : marker(entry.msgtype)
-    }).filter(text => text.length > 0).join('\n') ?? ''
+    case 'mixed': return mixedText(message.mixed?.msg_item ?? [])
     case 'image': return marker('image')
     case 'file': return marker('file')
     case 'video': return marker('video')
@@ -82,12 +84,16 @@ export function wecomImages(input: unknown): WecomImageRef[] {
   }
   return images
 }
-/** The quoted message's text, when the sender answered one; WeCom sends the content without the quoted message's id. */
+/**
+ * The quoted message's text, when the sender answered one; WeCom sends the content without the quoted message's id. A
+ * quote is one of text, image, mixed, voice or file, so a mixed one reads as its items and media as a marker.
+ */
 export function wecomQuote(quote: WecomMessage['quote']): string | undefined {
   if (!quote) return undefined
   if (quote.text?.content) return quote.text.content
   if (quote.voice?.content) return quote.voice.content
-  if (quote.msgtype === 'image') return '[图片]'
+  if (quote.msgtype === 'mixed') return mixedText(quote.mixed?.msg_item ?? []) || undefined
+  if (quote.msgtype === 'image' || quote.msgtype === 'file') return marker(quote.msgtype)
   return undefined
 }
 /** Converts a callback body into a Trigger, returning undefined for the bot's own messages and for anything unreadable. */

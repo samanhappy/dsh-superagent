@@ -232,6 +232,8 @@ const ROUTES: readonly Route[] = [
     const around = { before: shown(neighbours.before), after: shown(neighbours.after) }
     return { ...card, ...await host.sourceLink(found, signal), acknowledgement: host.store.replyStatus(key('ack', found.id)) ?? 'not_requested',
       ...(ref ? { context: feishuReferences(ref) } : {}),
+      // A quote carries no id, so its full text is only what the Source received; `triggerMessage` shows its preview.
+      ...typeof found.meta.quote === 'string' ? { quoted: found.meta.quote } : {},
       ...(offset === 0 ? {
         ...repliedTo ? { replied_to: triggerLine(repliedTo) } : {},
         around: { ...around.before ? { before: triggerLine(around.before) } : {}, ...around.after ? { after: triggerLine(around.after) } : {} },
