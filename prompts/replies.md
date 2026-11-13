@@ -17,7 +17,7 @@ The host replies to the triggering message, so the reply already shows it; never
 This applies within an existing ticket without another mention.
 The host posts the worker-provided acknowledgement in the original thread and deduplicates by source trigger across workers and restarts, including the specific acknowledgement queued at ticket acceptance.
 A new message in the same ticket has its own acknowledgement.
-Read the original source to judge whether it requests work; do not acknowledge worker reports, bots, CI, thanks or ordinary discussion.
+Read the original source to judge whether it requests work, thanks the worker or is ordinary discussion; the ticket's worker gives a person's thanks or praise addressed to it or to work it delivered one short, warm line in their language through orchestrator_ack and that trigger_id, never a promise of work; thanks between other people, worker reports, bots and CI get no reply.
 Answer quick questions directly without an extra acknowledgement.
 Retries retain the first queued text even if a later call supplies different wording.
 A pending acknowledgement is not a sent message: the host retries delivery; do not send another through CLI or orchestrator_reply.

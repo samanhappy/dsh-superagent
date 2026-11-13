@@ -547,7 +547,7 @@ Each Executor has six application tools:
 | Tool | Purpose |
 | --- | --- |
 | `orchestrator_read` | Read resources available to its own Ticket |
-| `orchestrator_ack` | Acknowledge a request |
+| `orchestrator_ack` | Acknowledge a request, or return a person's thanks or praise |
 | `orchestrator_report` | Report progress or an outcome, binding a pull request under the pull-request rules |
 | `orchestrator_thread_unrelated` | Drop an unrelated attached Thread, hand back its owned follow-ups and tell the main Session why |
 | `orchestrator_thread_follow` | Subscribe to a related Thread for context and tell the main Session |
@@ -571,7 +571,7 @@ Settings and prompt saves return the saved configuration. Policy sync returns th
 - A Thread window: the first five messages and five on either side of the Trigger. Messages use `{id, from, at, text}`, normally limited to 400 characters, or 1,200 for the two on either side. Truncated messages include `chars`; image references use `images`.
 - Other loaded messages as `{id, from, preview}` stubs of 50 characters. `orchestrator_eval_read` expands them by id.
 
-Ticket cards use the closed `TICKET_STATES` set from `src/app/cards.ts`: an open stage such as `person/review` or `working/queued`, or an ended outcome. Acknowledgements are limited to 100 words whether submitted through accept, assessment or `orchestrator_ack`.
+Ticket cards use the closed `TICKET_STATES` set from `src/app/cards.ts`: an open stage such as `person/review` or `working/queued`, or an ended outcome. Acknowledgements are limited to 100 words whether submitted through accept, assessment or `orchestrator_ack`. A person's thanks or praise gets one short reply instead of silence, from the Ticket's worker or, when no Ticket's worker decides it, the main Session.
 
 ### Read resources
 

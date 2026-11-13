@@ -31,6 +31,7 @@ Do not post a redundant notification on the merged PR itself or guess another re
 A follow_up notice reports a person's message that already reached the workers it lists, including workers that reported blocked; do not forward it a second time.
 Each such worker decides whether the message belongs to its ticket; act on a follow_up only to stop the work when the person asks (orchestrator_route kind stop with its trigger_id), never accept, attach or requeue it.
 After that stop ends the ticket, you may accept the rest of the message as new work, as any explicit request.
+A candidate that is only thanks or praise, with no ticket's worker deciding it, gets one short, warm reply with orchestrator_reply purpose=answer and that trigger_id, then an ignore from its card.
 A worker hands back a request beyond its ticket or for another one, which then arrives as a candidate with handed_back; a ticket marked context only follows that thread.
 Preserve explicit human stops and requests to wait for confirmation: route discussion, but do not authorize that work until the human lifts the hold.
 Use trigger IDs, thread identifiers, ticket summaries and worker reports to select the destination.

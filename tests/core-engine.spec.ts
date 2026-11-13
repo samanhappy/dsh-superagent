@@ -1087,6 +1087,22 @@ describe('replies', () => {
     expect(h.engine.reply({ purpose: 'result', ticketId, text: 'Done' })).toMatchObject({ status: 'pending' })
     expect(h.outbox.at(-1)!.channel).toEqual(trigger('1').channel)
   })
+  it('answers a person\'s thanks that reached no ticket, and only a human message', () => {
+    const h = harness()
+    h.engine.receive(trigger('7'))
+    expect(h.engine.reply({ purpose: 'answer', triggerId: '7', text: 'Anytime!' })).toMatchObject({ status: 'pending', reused: false })
+    expect(h.outbox.at(-1)).toMatchObject({ channel: trigger('7').channel, text: 'Anytime!', kind: 'reply' })
+    h.engine.receive(trigger('8', { human: false }))
+    expect(() => h.engine.reply({ purpose: 'answer', triggerId: '8', text: 'x' })).toThrow(new UserError('notQuestion'))
+  })
+  it('answers a message only a context Ticket reached, which no worker decides', () => {
+    const h = harness()
+    const ticketId = accepted(h).ticketId!
+    h.engine.followForContext(ticketId, { source: 'chat', id: 't2' })
+    h.engine.receive(trigger('9', { threads: [{ source: 'chat', id: 't2' }] }))
+    expect(followupOwners(h.repo.triggers.get('9')!, h.repo)).toEqual([])
+    expect(h.engine.reply({ purpose: 'answer', triggerId: '9', text: 'Anytime!' })).toMatchObject({ status: 'pending', reused: false })
+  })
   it('sends one failure notice to the ticket\'s starting conversation, after a failed report only', () => {
     const h = harness()
     const ticketId = accepted(h).ticketId!

@@ -85,7 +85,10 @@ export class Replies extends EnginePart {
       : request.purpose === 'failure' && ticket && failed ? key('failure-reply', ticket.id, failed.at)
       : key('reply', trigger?.id ?? ticket?.id ?? '', request.text)
     const existing = this.options.outbox.status(id)
-    const ready = !ticket || !trigger || ticket.answers?.includes(trigger.id)
+    // A message no ticket's worker decides has no worker answer to wait for: the main Session may answer it itself, such as
+    // thanks on a Thread only followed for context. A message that started a Ticket still waits for its worker's report.
+    const started = !!trigger && this.repo.tickets.list().some(item => item.origin.triggerIds.includes(trigger.id))
+    const ready = !ticket || !trigger || ticket.answers?.includes(trigger.id) || (!started && !this.owners(trigger).length)
     if (request.purpose === 'answer' && !ready && !existing) throw new UserError('noAnswer')
     const asker = attention?.triggerId ? this.repo.triggers.get(attention.triggerId) : undefined
     const channel = request.purpose === 'answer' ? trigger!.channel : asker?.channel ?? (ticket ? this.sourceChannel(ticket) : undefined)
