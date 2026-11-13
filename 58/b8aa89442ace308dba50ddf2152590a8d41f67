@@ -1,0 +1,22 @@
+src/app/resources.ts
+  h_18676a549cd52a 235-236
+src/executor/dsh.ts
+  h_18676a549cd52a 122,125,128-129
+src/sources/wecom-trigger.ts
+  h_18676a549cd52a 48-53,59,87-90,95-96
+tests/wecom.spec.ts
+  h_18676a549cd52a 5,78-87
+tests/weixin.spec.ts
+  h_18676a549cd52a 3,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58b8aa89442ace308dba50ddf2152590a8d41f67",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
