@@ -12,13 +12,13 @@
 > 编码 agent 完成，并非生产就绪的软件。本 fork 不会把它变成经过加固的服务：它只是朝着「一个团队能每天使用」
 > 的方向走了一步，并继承随之而来的限制。
 
-dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，以 [DeepSeek Harness](https://www.deepseek.com/en/harness/) 的 bundle 形式交付。它监听 GitHub，也可选择监听 GitLab、飞书、PingCode、企业微信和微信。当允许的人向它提出工作时，它会建立工作项，在自己的 agent 会话与目录中执行，并在原会话中作答，例如提交一个 pull request。Web 面板展示哪些事情需要人来处理。
+dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，以 [DeepSeek Harness](https://www.deepseek.com/en/harness/) 的 bundle 形式交付。它监听 GitHub，也可选择监听 GitLab、飞书、PingCode、企业微信和微信，或轮询你自己的 HTTP 事件接口。当允许的人向它提出工作时，它会建立工作项，在自己的 agent 会话与目录中执行，并在原会话中作答，例如提交一个 pull request。Web 面板展示哪些事情需要人来处理。
 
 它同时也是一种与 agent 协作的方式：**尽可能少占用人的注意力，尽可能多地交付价值。** 能替整个团队行动的 agent，也可能浪费整个团队的注意力，所以它只在被要求时、或团队写下的规则允许时行动，只在有人必须行动或能用到结果时发言。[docs/000-philosophy.md](docs/000-philosophy.md) 解释了这一原则，以及它对运维者提出了什么要求。
 
 ## 面板截图
 
-以下截图来自一次全新安装、尚未配置任何凭据的面板：接单前的部署检查、六个 Source，以及每个 Source 的配置位置。
+以下截图来自一次全新安装、尚未配置任何凭据的面板：接单前的部署检查、各个 Source，以及每个 Source 的配置位置。
 
 ![概览](assets/screenshots/overview.png)
 ![来源](assets/screenshots/sources.png)
@@ -32,9 +32,9 @@ dsh-superagent 是一个面向团队所关注仓库的主动式编码 agent，�
 相对上游，具体做了这些：
 
 - **一次安装，拿到全部 Source。** 每个 Source 都是 [cordis.patch.yml](cordis.patch.yml) 中独立的一行插件，并在 `package.json` 中各有自己的 `*-watch` 入口，因此一条 `dsh plugin add "link:$PWD"` 就能装好整个 bundle。profile 可以通过禁用对应行来去掉某个 Source；装了但还没配置的 Source 会保持暂停，并说明在等什么。
-- **比上游更多的 Source。** GitLab（通过 `glab`：实例地址、项目、轮询，以及 issue、merge request、评论的 observe 开关）；PingCode（通过本地 PingCode 技能及其 user token：项目可按 ID、identifier 或名称解析，回复以工作项评论发出）；企业微信（智能机器人，每个 bot 一条长连接：退避重连、markdown 回复、会话窗口上下文，以及被其他客户端抢占连接时的明确报错）；微信（通过 iLink，面板扫码登录，长轮询接收私聊，在同一会话中回复）。GitLab、PingCode 和企业微信自带供 worker 使用的 Skill；四者都附带面板设置、setup 校验、文档与测试。
+- **比上游更多的 Source。** GitLab（通过 `glab`：实例地址、项目、轮询，以及 issue、merge request、评论的 observe 开关）；PingCode（通过本地 PingCode 技能及其 user token：项目可按 ID、identifier 或名称解析，回复以工作项评论发出）；企业微信（智能机器人，每个 bot 一条长连接：退避重连、markdown 回复、会话窗口上下文，以及被其他客户端抢占连接时的明确报错）；微信（通过 iLink，面板扫码登录，长轮询接收私聊，在同一会话中回复）；HTTP（轮询一个接口，把系统告警或系统收集到的人工反馈转成 Trigger，结果回到企业微信会话，并可转发到多个群机器人 webhook）。GitLab、PingCode 和企业微信自带供 worker 使用的 Skill；这些新增 Source 都附带面板设置、文档与测试，带账号的还附带 setup 校验。
 - **面向日常运维，而不只是演示。** Setup 会逐个校验已配置的 Source（仓库与 push 权限、GitLab 角色与各项目凭据、PingCode token 与项目、企业微信凭据、微信 token），单个 Source 失败只停用它自己；Source 会上报健康状态并退避重试，而不是持续打满；保存卡片在需要时重启服务；面板中英双语，每个配置项都在原地有说明。
-- **核心持续演进时的回归网。** 约 1300 个测试、65 个文件，另有一致性测试保证模块表、测试表与所有本地链接不失效，并在 [CI](.github/workflows/ci.yml) 中对每次 push 和 PR 运行。
+- **核心持续演进时的回归网。** 约 1300 个测试，另有一致性测试保证模块表、测试表与所有本地链接不失效，并在 [CI](.github/workflows/ci.yml) 中对每次 push 和 PR 运行。
 
 ## 兼容性风险
 

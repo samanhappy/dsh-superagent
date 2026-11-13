@@ -13,13 +13,13 @@ English | [简体中文](README.zh-CN.md)
 > does not turn it into a hardened service; it is a step toward running it every day in one team, with the
 > limitations that come with that.
 
-dsh-superagent is a proactive coding agent for the repositories a team watches, packaged as a bundle for [DeepSeek Harness](https://www.deepseek.com/en/harness/). It listens to GitHub and, optionally, GitLab, Feishu, PingCode, WeCom and WeChat. When someone allowed asks the agent for work, it opens a work item, works on it in its own agent session and directory, and answers in the original conversation, for example with a pull request. A web panel shows what needs a person.
+dsh-superagent is a proactive coding agent for the repositories a team watches, packaged as a bundle for [DeepSeek Harness](https://www.deepseek.com/en/harness/). It listens to GitHub and, optionally, GitLab, Feishu, PingCode, WeCom and WeChat, or polls an HTTP endpoint you run. When someone allowed asks the agent for work, it opens a work item, works on it in its own agent session and directory, and answers in the original conversation, for example with a pull request. A web panel shows what needs a person.
 
 It is also a way of working with an agent: **take as little human attention as possible, and give as much value as possible.** An agent that can act for a whole team can also waste a whole team's attention, so it acts only when asked or when a rule the team wrote allows it, and speaks only when someone must act or can use a result. [docs/000-philosophy.md](docs/000-philosophy.md) explains the principle and what it asks of the operator.
 
 ## Screenshots
 
-The management panel on a fresh install, before any credential is configured: the deployment checks that gate taking work, the six Sources, and where each Source is set up.
+The management panel on a fresh install, before any credential is configured: the deployment checks that gate taking work, the Sources, and where each Source is set up.
 
 ![Overview](assets/screenshots/overview.png)
 ![Sources](assets/screenshots/sources.png)
@@ -33,9 +33,9 @@ The upstream project is a reference implementation: one GitHub repository, one o
 Concretely, on top of upstream:
 
 - **Install once and get every Source.** Each Source is a separate plugin row in [cordis.patch.yml](cordis.patch.yml) with its own `*-watch` entry in `package.json`, so a single `dsh plugin add "link:$PWD"` installs the whole bundle. Profiles can drop a Source by disabling its row; a Source that is installed but unconfigured stays paused and reports why.
-- **More Sources than upstream.** GitLab (through `glab`: instance host, projects, polling, observe switches for issues, merge requests and comments); PingCode (through the local PingCode skill and its user token: projects resolved by ID, identifier or name, replies as work-item comments); WeCom (an intelligent robot over one long connection per bot: reconnect with backoff, markdown replies, conversation-window context, and a clear error when another client takes the bot over); WeChat (via iLink, through a QR-code login in the panel, long polling for direct messages, replies in the same conversation). GitLab, PingCode and WeCom ship a Skill for workers; all four come with panel settings, setup verification, documentation and tests.
+- **More Sources than upstream.** GitLab (through `glab`: instance host, projects, polling, observe switches for issues, merge requests and comments); PingCode (through the local PingCode skill and its user token: projects resolved by ID, identifier or name, replies as work-item comments); WeCom (an intelligent robot over one long connection per bot: reconnect with backoff, markdown replies, conversation-window context, and a clear error when another client takes the bot over); WeChat (via iLink, through a QR-code login in the panel, long polling for direct messages, replies in the same conversation); HTTP (polling an endpoint for system alerts or human feedback a system collected, replies in a WeCom conversation and copies to group-bot webhooks). GitLab, PingCode and WeCom ship a Skill for workers; each added Source comes with panel settings, documentation and tests, and the ones with accounts also ship setup verification.
 - **Day-two operation, not just a demo.** Setup re-checks each configured Source (repository and push access, GitLab role and credentials per project, PingCode token and projects, WeCom credentials, WeChat token) and a failing Source disables only itself; Sources report health and back off instead of hammering; saving a card restarts the service when it must; the panel is bilingual (English/Chinese) and documents every configuration field in place.
-- **A regression net while the core changes.** About 1,300 tests across 65 files, plus documentation tests that keep the module table, the test table and every local link honest, run in [CI](.github/workflows/ci.yml) on every push and pull request.
+- **A regression net while the core changes.** About 1,300 tests, plus documentation tests that keep the module table, the test table and every local link honest, run in [CI](.github/workflows/ci.yml) on every push and pull request.
 
 ## Compatibility risk
 

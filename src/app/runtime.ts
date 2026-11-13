@@ -37,6 +37,7 @@ import { eventNotice, followupNotice } from './notices.ts'
 import { pullEndNotices } from '../sources/github-pull.ts'
 import { HealthBoard } from '../infra/health.ts'
 import { Outbox } from './outbox.ts'
+import { ForwardingOutbox } from './forward.ts'
 import { Passes } from './passes.ts'
 import { Setup } from './setup.ts'
 import { feishuSettings } from '../sources/feishu.ts'
@@ -161,10 +162,12 @@ export class Runtime extends Service implements SourceHost {
         deliver: (id, content) => sessions.prompt(masterId, id, content, 'steer'), images: triggerImages,
         candidateCard: candidate => candidateCard(links, candidate) })
       const outbox = this.outbox = new Outbox({ store, effects, sources, commands, paused: () => this.paused() })
+      // Replies of a Source with feedback targets queue one copy per target; notices and the primary path stay unchanged.
+      const replies = new ForwardingOutbox(outbox, { store, sources })
       const { assessor, executor } = this
       const policy = () => settingsPolicy(store.settings(), sources)
       const engine = this.engine = new Engine({ repo: store, scope: sources, policy, assessor, executor,
-        outbox, chatThread: key => sources.isChatThread(key),
+        outbox: replies, chatThread: key => sources.isChatThread(key),
         prepareTicket: (ticket, outcome) => executor.prepare(ticket, outcome), emit: event => {
           // Notify the main Session only about domain events it did not initiate itself.
           const notice = this.quiet ? undefined : eventNotice(event, id => store.tickets.get(id))
@@ -186,7 +189,7 @@ export class Runtime extends Service implements SourceHost {
       const evaluateDue = () => { engine.evaluateDue(); evals.set(evalsHealth(store)) }
       const passes = this.passes = new Passes({ engine: { receive: trigger => engine.receive(trigger), evaluateDue }, effects,
         health: this.runtimeHealth, lifetime: this.lifetime, configured: () => setup.configured(), closing: () => this.closing() })
-      this.sourceDeps = { store, engine, outbox, commands, sources, get ready() { return runtime.ready },
+      this.sourceDeps = { store, engine, outbox: replies, commands, sources, get ready() { return runtime.ready },
         get deployment() { return setup.deployment }, configured: () => setup.configured(),
         get setupProblem() { return setup.problem }, get feishuProblem() { return setup.feishuProblem },
         get gitlabProblem() { return setup.gitlabProblem }, get pingcodeProblem() { return setup.pingcodeProblem },

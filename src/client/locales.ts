@@ -39,6 +39,7 @@ const TEXT = {
   'health.github': ['GitHub 来源', 'GitHub Source'],
   'health.gitlab': ['GitLab 来源', 'GitLab Source'],
   'health.pingcode': ['PingCode 来源', 'PingCode Source'],
+  'health.http': ['HTTP 来源', 'HTTP Source'],
   'health.feishu': ['飞书来源', 'Feishu Source'],
   'health.wecom': ['企业微信来源', 'WeCom Source'],
   'health.weixin': ['微信来源', 'WeChat Source'],
@@ -597,6 +598,7 @@ const TEXT = {
   'reason.not_human': ['自动消息', 'Automated message'],
   'reason.not_a_member': ['发送者不在这个来源的名单里', 'Sender is not on this Source\'s list'],
   'reason.no_mention': ['没有点名智能体，且这个来源不接收其余消息', 'Does not address the agent, and this Source does not receive the rest'],
+  'reason.kind_not_listed': ['事件类型不在接收列表里', 'Event kind is not listed'],
   'reason.admission_ignored': ['准入设为忽略', 'Admission set to ignore'],
   'reason.chat_not_allowed': ['群不在监听的群里', 'Chat is not a listened chat'],
   'reason.direct_messages_not_allowed': ['私聊未开放', 'Direct messages are off'],
@@ -808,6 +810,7 @@ const TEXT = {
   'healthCode.weixinUnset': ['来源已打开，还没有设置微信 bot token', HEALTH_TEXT.weixinUnset],
   'healthCode.gitlabCliUnset': ['来源已打开，还没有设置 GitLab CLI', HEALTH_TEXT.gitlabCliUnset],
   'healthCode.pingcodeUnset': ['来源已打开，还没有设置 PingCode 技能或项目', HEALTH_TEXT.pingcodeUnset],
+  'healthCode.httpUnset': ['来源已打开，还没有设置 HTTP 接口地址', HEALTH_TEXT.httpUnset],
   'healthCode.pollFailures': ['连续 {count} 次轮询失败，最近一次：{error}', HEALTH_TEXT.pollFailures],
 } as const satisfies Record<string, readonly [string, string]>
 export type DshSuperagentKey = keyof typeof TEXT

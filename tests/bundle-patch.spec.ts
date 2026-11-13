@@ -28,7 +28,7 @@ const presetOf = (rows: readonly Row[], id: string) => rows.map(row => row.confi
 
 it('inserts every Source plugin enabled, so Sources settings lists all of them by default', async () => {
   const rows = await patched()
-  for (const kind of ['github', 'feishu', 'wecom', 'weixin', 'gitlab', 'pingcode']) {
+  for (const kind of ['github', 'feishu', 'wecom', 'weixin', 'gitlab', 'pingcode', 'http']) {
     const row = rows.find(row => row.id === `dsh-superagent-${kind}`)
     expect(row, kind).toBeDefined()
     expect(row?.disabled, kind).toBeUndefined()
@@ -38,7 +38,7 @@ it('inserts every Source plugin enabled, so Sources settings lists all of them b
 it('defines the worker preset Executor Sessions run under, with a shell that moves long commands to the background', async () => {
   const rows = await patched()
   expect(rows.map(row => row.id)).toEqual(['dsh-superagent', 'dsh-superagent-github', 'dsh-superagent-feishu', 'dsh-superagent-wecom',
-    'dsh-superagent-weixin', 'dsh-superagent-gitlab', 'dsh-superagent-pingcode', 'dsh-superagent-worker-preset', 'dsh-superagent-router-preset'])
+    'dsh-superagent-weixin', 'dsh-superagent-gitlab', 'dsh-superagent-pingcode', 'dsh-superagent-http', 'dsh-superagent-worker-preset', 'dsh-superagent-router-preset'])
   const preset = presetOf(rows, WORKER_PRESET)
   expect(preset.id).toBe(WORKER_PRESET)
   const plugins = flat(preset.plugins)

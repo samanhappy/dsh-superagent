@@ -57,6 +57,8 @@ export const KV = {
     seen: family<string[], [thread: string]>('thread-seen:'), initialized: family<boolean, [thread: string]>('thread-initialized:') },
   /** WeChat Source: the `get_updates_buf` cursor of the iLink long poll, stored once every message it carried has been taken in. */
   weixin: { buf: record<string>('weixin-buf') },
+  /** HTTP Source: the `next` cursor of the endpoint page last taken in completely. */
+  http: { cursor: record<string>('http-cursor') },
   /**
    * GitLab Source: the per-project cursor of the issues and merge requests read in full, and the per-subscribed-thread cursor
    * shared by the stream and thread reads (deterministic Trigger IDs deduplicate the overlap).

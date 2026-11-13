@@ -39,6 +39,7 @@
     "./weixin-watch": "./lib/weixin-watch.js",
     "./gitlab-watch": "./lib/gitlab-watch.js",
     "./pingcode-watch": "./lib/pingcode-watch.js",
+    "./http-watch": "./lib/http-watch.js",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json"
   },

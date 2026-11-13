@@ -249,7 +249,7 @@ Each model request binds the Session to the current prompt revision. The revisio
 | `src/app/tools/main.ts`, `src/app/tools/executor.ts` | Tool arguments of the main Session and the Executor Sessions into calls of the core classes, and their results into cards |
 | `src/app/http.ts`, `src/app/views/`, `src/app/api.ts` | HTTP requests into calls, and Store reads into the panel's views; `api.ts` types every route for the panel |
 | `src/app/resources.ts`, `src/app/links.ts`, `src/app/cards.ts` | Resource names into reads, source messages into links, records into compact cards for models |
-| `src/sources/github*.ts`, `src/sources/feishu*.ts`, `src/sources/gitlab*.ts`, `src/sources/pingcode*.ts`, `src/sources/poll.ts` | GitHub, Feishu, GitLab and PingCode payloads into Triggers and Thread facts, and messages into CLI and skill calls |
+| `src/sources/github*.ts`, `src/sources/feishu*.ts`, `src/sources/gitlab*.ts`, `src/sources/pingcode*.ts`, `src/sources/http.ts`, `src/sources/poll.ts` | GitHub, Feishu, GitLab, PingCode and HTTP payloads into Triggers and Thread facts, and messages into CLI, skill and webhook calls |
 | `src/deployment.ts`, `src/setup.ts`, `src/infra/` | Setup probes and problems, CLI transport, the agent's process environment |
 
 ## Dependency rules
@@ -283,6 +283,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 - MasterAssessor reads repository files with `readRepositoryPath`.
 - Sessions and Prompts register built-in skills only for GitHub, GitLab, Feishu and PingCode. Migration converts their schema-10 records.
 - Setup probes only GitHub, GitLab, Feishu and PingCode account fields (`SETUP_FIELDS`); the WeCom and WeChat fields are read there without a probe, so their credentials are known only once the Source connects. Only Feishu, GitLab and PingCode Sources receive account setup problems through `SourceContext.problem`.
+- The HTTP Source names the WeCom Source for its primary replies (`source: 'wecom'`, the `chatId` of a `wecom:<chatId>` Thread), so that delivery depends on the WeCom plugin; its extra targets use its own Channel.
 
 
 ## Modules
@@ -316,6 +317,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/app/setup.ts` | Setup, and `setupChanged`, whether a save changes a field setup reads |
 | `src/app/passes.ts` | Passes, the pass scheduler |
 | `src/app/outbox.ts` | The Outbox: the Engine's `Outbox` port, the receipts and the `reply` effects that send them |
+| `src/app/forward.ts` | `ForwardingOutbox`: the Outbox decorator that queues one copy of a Ticket reply per extra feedback target of its origin Source |
 | `src/app/notices.ts` | The main Session's notices and relays: `eventNotice`, `reportRelay`, `resultRelay` and `followupRelay` |
 | `src/app/store.ts` | The Store, and `Receipt`, a message of the outbox |
 | `src/app/store-read.ts` | `storeReads`: the Store's read queries for the views, the tools and the Sources' polls, which never write |
@@ -361,6 +363,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/registry.ts` | `SourceRegistry` |
 | `src/sources/host.ts` | `SourceHost`, `SourceContext`, `Health`, `health` and the fixed health texts |
 | `src/sources/poll.ts` | What GitHub, GitLab, Feishu and PingCode polling share: `POLL_HORIZON_MS`, `polled`, `cursorAt`, and `pollThreads`, which keeps a failure on its Thread as `pollError` |
+| `src/sources/http.ts` | The HTTP kind and plugin entry, exported as `./http-watch`: a poll round of an endpoint's items, the primary WeCom Channel, the extra group-bot Channels, its Policy part and its loop |
 | `src/sources/github.ts` | The GitHub kind and plugin entry, exported as `./github-watch`: a poll round of notifications, the pull requests of open Tickets with their CI, and subscribed Threads |
 | `src/sources/github-trigger.ts` | GitHub comments, reviews, Issue bodies and CI changes as Triggers, and GitHub addresses |
 | `src/sources/github-pull.ts` | The pull request rules: which pull requests a Ticket follows (`claimPull`, `observePull`), the closes it reports to the Engine, and `pullEndNotices`, the chat notice of a Ticket that ended merged or closed |
@@ -416,7 +419,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/client/locales.ts` | All copy in both languages, and the glossary of [001 Domain model](001-domain.md) |
 | `src/client/client.css`, `css.d.ts` | The panel's stylesheet, loaded as text |
 
-`src/sources/github.ts`, `src/sources/feishu.ts`, `src/sources/wecom.ts`, `src/sources/weixin.ts`, `src/sources/gitlab.ts` and `src/sources/pingcode.ts` are also the entries of the Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch`, `./feishu-watch`, `./wecom-watch`, `./weixin-watch`, `./gitlab-watch` and `./pingcode-watch`. The bundle's `cordis.patch.yml` inserts the six plugins, all enabled; a profile disables the Sources it does not use.
+`src/sources/github.ts`, `src/sources/feishu.ts`, `src/sources/wecom.ts`, `src/sources/weixin.ts`, `src/sources/gitlab.ts`, `src/sources/pingcode.ts` and `src/sources/http.ts` are also the entries of the Source plugins, built by `tsdown.config.ts` and exported in `package.json` as `./github-watch`, `./feishu-watch`, `./wecom-watch`, `./weixin-watch`, `./gitlab-watch`, `./pingcode-watch` and `./http-watch`. The bundle's `cordis.patch.yml` inserts the seven plugins, all enabled; a profile disables the Sources it does not use.
 
 ## Tests
 
@@ -427,6 +430,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/policy.spec.ts` | Source scope, the gate, the admission table, Mandate revalidation, the Policy version, settings migrations and assessment outcomes |
 | `tests/registry.spec.ts` | `SourceRegistry`: instances, validation, Policy parts, Channels and Thread context |
 | `tests/sources.spec.ts` | The Feishu and GitHub Sources on a `SourceContext`: translation, polls and read positions, the pull request rules, health |
+| `tests/http-source.spec.ts` | The HTTP Source: Trigger translation, the primary and extra Channels, cursors, the group-bot limit, the Policy part and the loop's health |
 | `tests/gitlab.spec.ts` | The GitLab Source on a `SourceContext`: Trigger translation, project polling and cursors, note reads, replies and resources |
 | `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
@@ -443,6 +447,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/effects.spec.ts` | The effect queue: coalescing, limits, retries with backoff, health and shutdown |
 | `tests/passes.spec.ts` | Passes: one at a time, the ones asked for during a pass run as one after it, and the runtime health a failed pass reports |
 | `tests/outbox.spec.ts` | The Outbox on a running Runtime: messages wait while processing is paused or their Source is not installed |
+| `tests/forward.spec.ts` | `ForwardingOutbox`: one copy per extra target, pre-checking before the primary, the messages it leaves alone, and withdrawal |
 | `tests/cache.spec.ts` | `TextCache` |
 | `tests/queue.spec.ts` | The Runtime's work through the effect queue, and what earlier versions stored |
 | `tests/followups.spec.ts` | A person's follow-up on a Ticket's Thread: its notice to the main Session, the tools that act on it, what a burst costs; a worker's hand-back and context follow, and the main Session's note |

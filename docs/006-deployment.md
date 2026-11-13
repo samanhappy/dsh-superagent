@@ -6,7 +6,7 @@ Use this guide to install, configure and operate dsh-superagent. It covers accou
 
 - **A dedicated DeepSeek Harness profile**, called `superagent` in this guide. Create it from the Web profile template. It loads the bundle and serves its panel on `127.0.0.1`. Keep it separate from the profile you work in: the plugin changes process-wide `PATH` and git settings, and its process needs independent restarts and upgrades.
 - **An agent GitHub account.** The agent comments, pushes branches and opens pull requests as this account, through a GitHub CLI signed in only as that account.
-- **Optional accounts:** a Feishu bot for chat requests, a WeCom intelligent robot, a WeChat bot logged in by QR code, a GitLab account for issues and merge requests, and a PingCode account for work items and their comments. Every Source plugin is enabled by default and appears in Sources settings; one nobody configures stays paused. A profile leaves a Source out with `disabled: true` on its entry.
+- **Optional accounts:** a Feishu bot for chat requests, a WeCom intelligent robot, a WeChat bot logged in by QR code, a GitLab account for issues and merge requests, and a PingCode account for work items and their comments. The HTTP Source needs no account: it polls an endpoint you run, and can forward replies to WeCom. Every Source plugin is enabled by default and appears in Sources settings; one nobody configures stays paused. A profile leaves a Source out with `disabled: true` on its entry.
 
 Plugin configuration holds the state directory and machine limits. Use the panel for everything else: Sources for the repository and accounts, Policy for allowed lists, and Execution for worker directories and commands.
 
@@ -120,6 +120,31 @@ The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct 
    The user token expires after 30 days. Run the same command to authorize again; until it succeeds, setup reports `pingcodeTokenInvalid`.
 
    The Source looks for the skill in `~/.agents/skills/pingcode`, then `~/.workbuddy/skills/pingcode`, and accepts another directory in the PingCode card's skill field. The `.env` decides which account answers, and dsh-superagent posts replies to work items as that account.
+
+### HTTP events (optional)
+
+The HTTP Source brings in what a system of yours already knows: an alert it raised, or feedback it collected from a person. It polls one endpoint and turns each item into a Trigger; results are answered like any other Source, and can be copied to WeCom.
+
+1. Set the endpoint URL on the HTTP card. The Source sends `GET <url>?after=<cursor>` (or `POST` with `{"after":"<cursor>"}`), and expects a page of the form:
+
+   ```json
+   {
+     "items": [
+       { "id": "evt_7", "kind": "alert", "actor": "monitor", "text": "Disk is 94% full on build-1", "at": "2026-01-01T00:00:00.000Z", "thread": "case-7", "url": "https://events.example.com/cases/7" }
+     ],
+     "next": "opaque-cursor"
+   }
+   ```
+
+   `id`, `kind`, `text` and `at` are required; `actor`, `thread` and `url` are optional. Items are oldest first. The Source takes in the whole page before saving `next`; without `next` the next round reads the same page again, and deterministic Trigger ids make that a no-op rather than a gap. Headers on the card carry an `Authorization` value if the endpoint needs one. Keep the page below 5 MB.
+
+2. Declare the event kinds you accept, and for each whether it is a person's submission (`origin: person`) or a system's event (`origin: system`). An undeclared kind is recorded as `filtered` with the reason `kind_not_listed`, not silently dropped. A person kind is authorized by the Policy's allowed list and, when addressed `direct` or `mention`, makes an explicit request. A system kind is a machine event: list the producer's `actor` under the Policy's bots list, or accept the admission table's cell, and keep `eval.mode` on `auto`; it can become an inferred candidate, never an explicit request or a stop.
+
+3. Choose where replies go. `feedbackChatId` is a WeCom conversation the existing WeCom Source already sends to; get it from a Thread key on the Threads page, the `chatId` in `wecom:<chatId>`. Replies then travel over that bot's long connection, exactly like a WeCom request; keep that Source enabled and connected, or results wait in the Outbox. Leave it empty to use the first extra target as the primary.
+
+4. Add `feedbackUrls` for extra copies. Each row is a WeCom group robot webhook (`https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...`) with a short `id`; every completed reply is also posted there as markdown. These URLs are credentials: store them only on this card, and take them out of logs and screenshots. A group robot accepts at most 4096 bytes of markdown and about 20 messages a minute; with any `feedbackUrls` configured, a longer reply is refused before it is queued, so the agent rewrites it shorter. A non-zero `errcode` is retried — `93000` usually means the bot was removed from the group or the URL changed, and fixing either restores delivery. A group robot has no idempotency key, so a timeout after it accepted a message can post that copy twice; the receipt retries until it reads a success.
+
+The HTTP endpoint's URL and headers are credentials too. The endpoint is polled as often as the interval says (at least 10 seconds); a failed round is quiet once, and three in a row show as the Source's health. The Source does not deduplicate by content: use a stable `id` per event, and a new `id` when the same case changes.
 
 ## Install
 

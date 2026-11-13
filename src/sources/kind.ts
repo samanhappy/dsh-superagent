@@ -55,12 +55,12 @@ export interface SourceChannel<C> {
    * Sends a message idempotently by ID; returns `'gone'` when the target conversation no longer accepts replies.
    * @throws when delivery failed but may succeed on a later retry.
    */
-  send(host: Pick<SourceContext, 'commands'>, message: OutboundMessage): Promise<'sent' | 'gone'>
+  send(host: Pick<SourceContext, 'commands'>, message: OutboundMessage, config: C): Promise<'sent' | 'gone'>
   /**
    * Throws when this Channel can never accept `message` as written, such as text over its word limit. The Outbox calls it
    * before queueing a reply, so the agent that wrote it learns why to rewrite instead of a message retrying forever.
    */
-  check?(message: OutboundMessage): void
+  check?(message: OutboundMessage, config: C): void
   /** Returns the URL and label for `address`; `url` is empty when `links` lack the required deployment info. */
   link(address: Record<string, string>, links: ChannelLinks): ChannelLink
 }

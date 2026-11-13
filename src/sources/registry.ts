@@ -100,10 +100,16 @@ export class SourceRegistry implements SourceScope {
   async send(message: OutboundMessage, commands: Commands): Promise<'sent' | 'gone' | 'waiting'> {
     const kind = this.kinds.get(message.channel.source)
     if (!kind) return 'waiting'
-    return kind.channel ? kind.channel.send({ commands }, message) : 'gone'
+    return kind.channel ? kind.channel.send({ commands }, message, this.configOf(kind)) : 'gone'
   }
   /** Throws when the message's Channel refuses it as written, so the Outbox can refuse a reply before queueing it. */
-  check(message: OutboundMessage): void { this.kinds.get(message.channel.source)?.channel?.check?.(message) }
+  check(message: OutboundMessage): void {
+    const kind = this.kinds.get(message.channel.source)
+    if (!kind?.channel?.check) return
+    kind.channel.check(message, this.configOf(kind))
+  }
+  /** The configuration a Channel sees, resolved at send time so a saved target takes effect on the next reply. */
+  private configOf(kind: SourceKind): Record<string, unknown> { return this.instance(kind.kind)?.config ?? kind.schema.parse({}) }
   link(channel: ChannelRef, links: ChannelLinks): ChannelLink {
     const link = this.kinds.get(channel.source)?.channel?.link(channel.address, links)
     return link ?? { url: '', label: { zh: channel.source, en: channel.source } }

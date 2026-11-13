@@ -8,8 +8,8 @@
       name: '@samanhappy/dsh-superagent/github-watch'
     # Every Source plugin ships enabled, so Sources settings lists all of them and each Source stays paused until it is
     # configured: Feishu (bot lark-cli), WeCom (intelligent robot's ID and secret), WeChat (QR-code login token), GitLab
-    # (glab wrapper and projects), and PingCode (skill directory and projects). A profile leaves a Source out of its tree
-    # by disabling that entry with `disabled: true`.
+    # (glab wrapper and projects), PingCode (skill directory and projects), and HTTP (an endpoint plus its feedback targets).
+    # A profile leaves a Source out of its tree by disabling that entry with `disabled: true`.
     - id: dsh-superagent-feishu
       name: '@samanhappy/dsh-superagent/feishu-watch'
     - id: dsh-superagent-wecom
@@ -20,6 +20,8 @@
       name: '@samanhappy/dsh-superagent/gitlab-watch'
     - id: dsh-superagent-pingcode
       name: '@samanhappy/dsh-superagent/pingcode-watch'
+    - id: dsh-superagent-http
+      name: '@samanhappy/dsh-superagent/http-watch'
     # The agent preset of every Executor Session (WORKER_PRESET in src/app/sessions.ts); the main Session has its own, below.
     # It is DSH's `standard` preset with only what a worker needs, and a shell whose foreground command moves to a background job
     # after 5 seconds, so a long command does not hold back a person's message, which the Session takes at its next step. Left

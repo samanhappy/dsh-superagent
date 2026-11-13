@@ -17,6 +17,7 @@ export const HEALTH_TEXT = {
   weixinUnset: 'The Source is on, and its WeChat bot token is not set',
   gitlabCliUnset: 'The Source is on, and its GitLab CLI is not set up',
   pingcodeUnset: 'The Source is on, and its PingCode skill or projects are not set up',
+  httpUnset: 'The Source is on, and its endpoint URL is not set',
   pollFailures: '{count} consecutive failed polls; last: {error}',
 } as const
 export type HealthCode = keyof typeof HEALTH_TEXT
