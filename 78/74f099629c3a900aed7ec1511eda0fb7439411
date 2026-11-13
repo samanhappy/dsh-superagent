@@ -1,0 +1,36 @@
+docs/006-deployment.md
+  h_18676a549cd52a 82-83,88
+docs/007-architecture.md
+  h_18676a549cd52a 381,386
+src/app/source-context.ts
+  h_18676a549cd52a 69-70
+src/sources/host.ts
+  h_18676a549cd52a 66-72
+src/sources/wecom-read.ts
+  h_18676a549cd52a 4-5,7,32-43,48-57,59-61,66-72,74,76-78,84-85
+src/sources/wecom.ts
+  h_18676a549cd52a 9,73-74,78
+src/sources/weixin-read.ts
+  h_18676a549cd52a 3-4,6,16-21,24-29,58-67,69-71,76-82,84,86-88
+src/sources/weixin.ts
+  h_18676a549cd52a 15,81-82,86
+tests/wecom-image.spec.ts
+  h_18676a549cd52a 90-97
+tests/wecom.spec.ts
+  h_18676a549cd52a 5,9,200-217
+tests/weixin-loop.spec.ts
+  h_18676a549cd52a 14,21-22,100-115
+tests/weixin.spec.ts
+  h_18676a549cd52a 2,7-8,38,249-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7874f099629c3a900aed7ec1511eda0fb7439411",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
