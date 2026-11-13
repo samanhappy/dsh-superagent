@@ -1,0 +1,43 @@
+cordis.patch.yml
+  s_1aee31ff39208a::t_74e3dd5731cfcf 11-12,23-24
+docs/007-architecture.md
+  s_1aee31ff39208a::t_a7a6e4b2c6fa3b 252,286,320,366,422,433,450
+package.json
+  s_1aee31ff39208a::t_6c14f44de5d859 42
+src/app/forward.ts
+  s_1aee31ff39208a::t_783f24eb3633e1 1-62
+src/app/runtime.ts
+  s_1aee31ff39208a::t_42c117732f24dd 40,165-166,170,192
+src/client/locales.ts
+  s_1aee31ff39208a::t_d95444046c93e7 42,601,813
+src/kv.ts
+  s_1aee31ff39208a::t_afd52c4f12b885 60-61
+src/sources/host.ts
+  s_1aee31ff39208a::t_ed2575895fee8d 20
+src/sources/kind.ts
+  s_1aee31ff39208a::t_31ca1d3175aeba 58,63
+src/sources/registry.ts
+  s_1aee31ff39208a::t_2157079a28fbb1 103,106-112
+tests/bundle-patch.spec.ts
+  s_1aee31ff39208a::t_f509631f0adda2 31,41
+tests/forward.spec.ts
+  s_1aee31ff39208a::t_c16b0abc8836ea 1-76
+tsdown.config.ts
+  s_1aee31ff39208a::t_3c9be77ee4e78c 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3ddcb37c1b1993f6aaee4b6dc32acb34f31edc4",
+  "prompts": {},
+  "sessions": {
+    "s_1aee31ff39208a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d527-5071-75f1-b1a1-675971510cef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
