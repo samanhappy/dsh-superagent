@@ -125,6 +125,10 @@ The Source polls the iLink bot API (`https://ilinkai.weixin.qq.com`) for direct 
 
 The HTTP Source brings in what a system of yours already knows: an alert it raised, or feedback it collected from a person. It polls one endpoint and turns each item into a Trigger; results are answered like any other Source, and can be copied to WeCom.
 
+One installation can poll more than one endpoint. Add an instance on the Sources settings page with **Add a Source instance** (in Chinese, 添加来源实例), choosing **HTTP events** and, optionally, an ID such as `http-2`; leave the ID empty to take the next free one. Each instance keeps its own URL, headers, polling interval, page cursor, event kinds, reply targets, Policy part and admission row, so no instance shares an identity or advances another's cursor. Triggers, Threads and replies name their instance (`http:` for the default one, `http-2:` for another), and disabling one instance leaves the others running. A new instance stays paused until its endpoint URL is set. **Remove instance** on its card deletes it together with its Policy part; the panel refuses while open Tickets or replies waiting in the Outbox still address it, and the default instance can only be disabled, not removed.
+
+The panel offers only the kinds that can run several instances, which today is HTTP alone. For a kind that takes an account, such as a GitHub or WeCom bot, another endpoint belongs either in one aggregated page served by that endpoint, or in a new Source kind.
+
 1. Set the endpoint URL on the HTTP card. The Source sends `GET <url>?after=<cursor>` (or `POST` with `{"after":"<cursor>"}`), and expects a page of the form:
 
    ```json

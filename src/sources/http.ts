@@ -1,18 +1,18 @@
-/** HTTP Source kind: polls an HTTP endpoint for system alerts and collected human feedback, with replies forwarded to WeCom. */
+/** HTTP Source kind: polls one or more endpoints for system alerts and collected human feedback, with replies forwarded to WeCom. */
 import type { Context } from '@deepseek-ai/cordis'
 import { z } from 'zod'
 import { key, threadKey, type ChannelRef, type OutboundMessage, type Trigger } from '../core/index.ts'
-import { KV } from '../kv.ts'
+import { KV, type Key } from '../kv.ts'
 import { checkedImText } from '../infra/text.ts'
 import { health, sourceContext, type SourceContext } from './host.ts'
 import type { SourceKind } from './kind.ts'
 import { pause } from './poll.ts'
 
-/** The kind id, its settings key, the health entry and the source of its Triggers and Channels. */
+/** The kind id, its default instance's settings key, the default health entry and the source of its Triggers and Channels. */
 export const SOURCE = 'http'
 /** A WeCom group robot accepts at most this many bytes of markdown. */
 export const WECOM_GROUP_MAX_BYTES = 4096
-/** Consecutive failed rounds before the Source reports an error; one failure stays quiet and is retried at once. */
+/** Consecutive failed rounds before an endpoint reports an error; one failure stays quiet and is retried at once. */
 const MAX_FAILURES = 3
 /** Largest accepted page, so a wrong endpoint cannot exhaust memory. */
 const MAX_PAGE_CHARS = 5_000_000
@@ -65,30 +65,33 @@ type Page = ReturnType<typeof PageSchema.parse>
 const GroupAnswerSchema = z.looseObject({ errcode: z.number().default(0), errmsg: z.string().default('') })
 
 /** The conversation a reply goes to: the configured WeCom chat, or the first feedback target as a fallback. */
-export function feedbackChannel(config: HttpConfig): ChannelRef | undefined {
+export function feedbackChannel(config: HttpConfig, source = SOURCE): ChannelRef | undefined {
   if (config.feedbackChatId) {
     return { source: WECOM, thread: `${WECOM}:${config.feedbackChatId}`, address: { chatId: config.feedbackChatId } }
   }
   const first = config.feedbackUrls[0]
-  return first ? { source: SOURCE, thread: `${SOURCE}:${first.id}`, address: { target: first.id } } : undefined
+  return first ? { source, thread: `${source}:${first.id}`, address: { target: first.id } } : undefined
 }
 
 /** Maps one page item to a Trigger; an undeclared kind is still recorded, so `scope` can show it as filtered. */
-export function httpTrigger(item: HttpItem, config: HttpConfig): Trigger {
+export function httpTrigger(item: HttpItem, config: HttpConfig, source = SOURCE): Trigger {
   const event = config.events.find(candidate => candidate.kind === item.kind)
   const thread = item.thread ?? item.id
   const addressed = event?.origin === 'person' && event.addressed !== 'none' ? { addressed: event.addressed } : {}
-  const channel = feedbackChannel(config)
+  const channel = feedbackChannel(config, source)
   return {
-    id: key(SOURCE, item.id), source: SOURCE,
-    threads: [{ source: SOURCE, id: thread }],
-    actor: { source: SOURCE, id: item.actor },
+    id: key(source, item.id), source,
+    threads: [{ source, id: thread }],
+    actor: { source, id: item.actor },
     human: event?.origin === 'person',
     ...addressed, at: item.at, text: item.text,
     ...(channel ? { channel } : {}), ...(item.url ? { url: item.url } : {}),
     meta: { itemId: item.id, kind: item.kind, thread },
   }
 }
+
+/** The page cursor an instance advances: the bare key for the default instance, its own key for every other one. */
+export const cursorOf = (instance: string): Key<string> => instance === SOURCE ? KV.http.cursor : KV.http.cursors(instance)
 
 /** Truncates `text` to `max` UTF-8 bytes without splitting a character; used only as a last resort for a Channel's hard limit. */
 function truncateBytes(text: string, max: number): string {
@@ -127,20 +130,21 @@ export async function sendFeedback(_host: Pick<SourceContext, 'commands'>, messa
 }
 
 /** Reads one page and hands every valid item to the Engine; the cursor moves only after the whole page was taken in. */
-export async function pollHttp(ctx: SourceContext, config: HttpConfig, signal: AbortSignal): Promise<{ read: number; unreadable: number }> {
-  const cursor = ctx.state.get(KV.http.cursor) ?? ''
+export async function pollHttp(ctx: SourceContext, config: HttpConfig, signal: AbortSignal, source = SOURCE,
+  cursorKey: Key<string> = cursorOf(source)): Promise<{ read: number; unreadable: number }> {
+  const cursor = ctx.state.get(cursorKey) ?? ''
   const page = await requestPage(config, cursor, signal)
   let unreadable = 0
   for (const raw of page.items) {
     if (signal.aborted) throw new Error('The HTTP Source stopped during the round')
     const parsed = HttpItemSchema.safeParse(raw)
     if (!parsed.success) { unreadable += 1; continue }
-    const trigger = httpTrigger(parsed.data, config)
+    const trigger = httpTrigger(parsed.data, config, source)
     await ctx.receive(trigger)
     ctx.threads.describe(threadKey(trigger.threads[0]!), { label: parsed.data.kind, ...(parsed.data.url ? { url: parsed.data.url } : {}) })
   }
   // Without `next` the next round reads the same page; deterministic Trigger ids make that a no-op instead of a gap.
-  if (page.next) ctx.state.set(KV.http.cursor, page.next)
+  if (page.next) ctx.state.set(cursorKey, page.next)
   return { read: page.items.length, unreadable }
 }
 
@@ -170,41 +174,60 @@ async function requestPage(config: HttpConfig, cursor: string, signal: AbortSign
   }
 }
 
-/** The polling loop: waits for setup, follows the Source's switch, reports health, backs off and stops on abort. */
+/**
+ * Polls every instance of the Source on its own interval, reporting health under the instance's own entry and advancing
+ * only that instance's cursor; instances added in the panel join the next round, and removed ones are dropped.
+ */
 export async function watch(ctx: SourceContext, signal: AbortSignal): Promise<void> {
   await ctx.ready
   if (!ctx.configured()) {
-    ctx.report(SOURCE, health('paused', 'setupPending'))
+    for (const instance of ctx.instances()) ctx.report(instance.id, health('paused', 'setupPending'))
     return
   }
-  let failures = 0
+  const due = new Map<string, number>()
+  const failures = new Map<string, number>()
   while (!signal.aborted) {
-    const config = ctx.config<HttpConfig>(SOURCE)
-    if (!config) ctx.report(SOURCE, health('paused', 'sourceOff'))
-    else if (!config.url) ctx.report(SOURCE, health('paused', 'httpUnset'))
-    else {
-      try {
-        const round = await pollHttp(ctx, config, signal)
-        failures = 0
-        ctx.report(SOURCE, { state: 'ready', detail: `${round.read} items, ${round.unreadable} unreadable`, at: new Date().toISOString() })
-      } catch (error) {
-        if (signal.aborted) return
-        failures += 1
-        if (failures >= MAX_FAILURES) ctx.report(SOURCE, health('error', 'pollFailures', { count: String(failures), error: String(error) }))
+    const started = Date.now()
+    let wait = 60_000
+    const instances = ctx.instances()
+    const live = new Set(instances.map(instance => instance.id))
+    for (const id of due.keys()) if (!live.has(id)) due.delete(id)
+    for (const id of failures.keys()) if (!live.has(id)) failures.delete(id)
+    for (const instance of instances) {
+      const at = due.get(instance.id) ?? 0
+      if (at > started) { wait = Math.min(wait, at - started); continue }
+      const config = ctx.config<HttpConfig>(instance.id)
+      const interval = (config?.intervalSeconds ?? 60) * 1000
+      if (!config) ctx.report(instance.id, health('paused', 'sourceOff'))
+      else if (!config.url) ctx.report(instance.id, health('paused', 'httpUnset'))
+      else {
+        try {
+          const round = await pollHttp(ctx, config, signal, instance.id, cursorOf(instance.id))
+          failures.set(instance.id, 0)
+          ctx.report(instance.id, { state: 'ready', detail: `${round.read} items, ${round.unreadable} unreadable`, at: new Date().toISOString() })
+        } catch (error) {
+          if (signal.aborted) return
+          const count = (failures.get(instance.id) ?? 0) + 1
+          failures.set(instance.id, count)
+          if (count >= MAX_FAILURES) ctx.report(instance.id, health('error', 'pollFailures', { count: String(count), error: String(error) }))
+        }
       }
+      due.set(instance.id, Date.now() + interval)
+      wait = Math.min(wait, interval)
     }
-    await pause((config?.intervalSeconds ?? 60) * 1000, signal)
+    await pause(Math.max(100, wait), signal)
   }
 }
 
-/** The HTTP Source: one endpoint polled for alerts and feedback, and WeCom Channels for its replies. */
+/** The HTTP Source: endpoints polled for alerts and feedback, and WeCom Channels for their replies; the panel may add more instances. */
 export const httpKind: SourceKind<HttpConfig> = {
   kind: SOURCE,
   title: { zh: 'HTTP 事件', en: 'HTTP events' },
   description: {
-    zh: '轮询 HTTP 接口，把系统告警或系统收集到的人工反馈转为 Trigger；结果反馈到企业微信会话或群机器人。',
-    en: 'Polls an HTTP endpoint for system alerts or human feedback a system collected, and sends replies to a WeCom conversation or group bots.',
+    zh: '轮询 HTTP 接口，把系统告警或系统收集到的人工反馈转为 Trigger；结果反馈到企业微信会话或群机器人。可以在「来源」设置里添加多个实例，每个实例有各自的地址、游标和准入行。',
+    en: 'Polls an HTTP endpoint for system alerts or human feedback a system collected, and sends replies to a WeCom conversation or group bots. Add more instances in Sources settings; each has its own URL, cursor and admission row.',
   },
+  multi: true,
   schema: HttpConfigSchema,
   fields: [
     { key: 'url', type: 'text', label: { zh: 'HTTP 接口地址', en: 'HTTP endpoint' },
@@ -267,8 +290,8 @@ export const httpKind: SourceKind<HttpConfig> = {
     ],
     explicit: { zh: '名单里的人通过 HTTP 来源提交人工反馈（事件类型声明为 person）。',
       en: 'A person on the list submits feedback through the HTTP Source (an event kind declared as person).' },
-    rows: () => [{ id: 'default', label: { zh: 'HTTP 事件', en: 'HTTP events' }, note: { zh: '全部', en: 'All' },
-      cells: { listedUnaddressed: true, unlistedAddressed: true, unlistedUnaddressed: true } }],
+    rows: () => [{ id: 'default', label: { zh: 'HTTP 事件', en: 'HTTP events' },
+      note: { zh: '全部', en: 'All' }, cells: { listedUnaddressed: true, unlistedAddressed: true, unlistedUnaddressed: true } }],
   },
 }
 

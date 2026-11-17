@@ -43,6 +43,11 @@ export const USER_ERRORS = {
   promptPlaceholders: ['refused', 'The “{part}” template must keep {placeholders}, which the system fills in'],
   promptPartEmpty: ['refused', 'The “{part}” part cannot be empty; reset it to follow its built-in text'],
   sourceNotInstalled: ['refused', 'The {source} Source kind is not installed'],
+  sourceNotMulti: ['refused', 'The {kind} Source does not accept another instance'],
+  sourceNameInvalid: ['refused', 'A Source instance ID starts with {kind}- followed by lowercase letters and digits'],
+  sourceExists: ['refused', 'A Source instance with the ID {source} already exists'],
+  sourceDefault: ['refused', 'The default instance of {source} cannot be removed; disable it instead'],
+  sourceInUse: ['refused', 'The Source instance {source} still has open Tickets or replies waiting; remove it after they finish'],
   noLabels: ['refused', 'This Source has no names to refresh'],
   nothingToSync: ['refused', 'The {source} Source\'s part of the Policy has nothing to sync from, or the Source is off or waiting for setup'],
 } as const satisfies Record<string, readonly ['missing' | 'refused', string]>

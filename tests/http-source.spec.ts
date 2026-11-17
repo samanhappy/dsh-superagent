@@ -22,6 +22,7 @@ function context(overrides: Record<string, unknown> = {}) {
   const describe = vi.fn()
   const report = vi.fn()
   const value = { ready: Promise.resolve(), configured: () => true, config: () => undefined,
+    instances: () => [{ id: 'http', kind: 'http', enabled: true, config: config() }],
     state: { get: (name: string) => state.get(name), set: (name: string, text: string) => { state.set(name, text) } },
     receive, threads: { describe }, report, ...overrides } as unknown as SourceContext
   return { value, state, receive, describe, report }
@@ -150,6 +151,84 @@ describe('HTTP Source loop', () => {
       expect.objectContaining({ state: 'error', code: 'pollFailures' })), { timeout: 2000 })
     controller.abort()
     await running
+  })
+})
+
+describe('Several HTTP instances', () => {
+  it('is one kind the panel may instantiate several times, with one health entry per instance', () => {
+    expect(httpKind.multi).toBe(true)
+    expect(httpKind.health).toEqual(['http'])
+    const settings = SettingsSchema.parse({ sources: { http: { enabled: true, config: {} }, 'http-2': { enabled: true, config: {} } } })
+    const sources = new SourceRegistry(() => settings)
+    sources.register(httpKind)
+    expect(sources.instances().map(instance => [instance.id, instance.kind])).toEqual([['http', 'http'], ['http-2', 'http']])
+    expect(sources.healthNames(sources.instances()[1]!)).toEqual(['http-2'])
+  })
+  it('polls under the instance\'s own Trigger ids and cursor, leaving another instance\'s cursor alone', async () => {
+    const contextValue = context()
+    contextValue.state.set('http-cursor', 'first-page')
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, _init: RequestInit) => answer({ items: [item()], next: 'page-2' })))
+    await pollHttp(contextValue.value, config(), new AbortController().signal, 'http-2')
+    expect(contextValue.receive.mock.calls[0]![0]).toMatchObject({ id: key('http-2', 'event-1'), source: 'http-2',
+      threads: [{ source: 'http-2', id: 'event-1' }] })
+    expect(contextValue.state.get('http-cursor')).toBe('first-page')
+    expect(contextValue.state.get('http-cursor:http-2')).toBe('page-2')
+  })
+  it('polls every instance on its own schedule and reports under its own health entry', async () => {
+    const instances = [
+      { id: 'http', kind: 'http', enabled: true, config: { ...config({ url: 'https://example.com/one' }), intervalSeconds: 0.001 } },
+      { id: 'http-2', kind: 'http', enabled: true, config: { ...config({ url: 'https://example.com/two' }), intervalSeconds: 0.001 } },
+    ]
+    const many = context({ instances: () => instances,
+      config: (id: string) => instances.find(instance => instance.id === id)?.config })
+    const fetchMock = vi.fn(async (url: string) => answer({ items: [item({ id: new URL(String(url)).pathname.slice(1) })] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+    const running = watch(many.value, controller.signal)
+    await vi.waitFor(() => {
+      expect(many.report).toHaveBeenCalledWith('http', expect.objectContaining({ state: 'ready' }))
+      expect(many.report).toHaveBeenCalledWith('http-2', expect.objectContaining({ state: 'ready' }))
+    })
+    controller.abort()
+    await running
+    expect(new Set(fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname))).toEqual(new Set(['/one', '/two']))
+    // No `next` on a page leaves its own cursor alone; the two cursors are separate keys.
+    expect(many.state.get('http-cursor')).toBeUndefined()
+    expect(many.state.get('http-cursor:http-2')).toBeUndefined()
+  })
+  it('reports a paused instance under its own health entry', async () => {
+    const empty = context({ config: () => config({ url: '' }), instances: () => [
+      { id: 'http', kind: 'http', enabled: true, config: config() },
+      { id: 'http-2', kind: 'http', enabled: true, config: config({ url: '' }) }] })
+    const controller = new AbortController()
+    const running = watch(empty.value, controller.signal)
+    await vi.waitFor(() => expect(empty.report).toHaveBeenCalledWith('http-2', expect.objectContaining({ state: 'paused', code: 'httpUnset' })))
+    controller.abort()
+    await running
+  })
+  it('keeps each instance\'s Policy part and admission row separate', () => {
+    const settings = SettingsSchema.parse({ policy: { sources: {
+      http: { admission: { default: { unlistedAddressed: 'ignore' } } },
+      'http-2': { admission: { default: { unlistedAddressed: 'explicit' } } } } } })
+    const sources = new SourceRegistry(() => settings)
+    sources.register(httpKind)
+    expect(sources.policyPart('http')!.admission.default!.unlistedAddressed).toBe('ignore')
+    expect(sources.policyPart('http-2')!.admission.default!.unlistedAddressed).toBe('explicit')
+  })
+  it('sends a reply through the target list of the instance that queued it', async () => {
+    const settings = SettingsSchema.parse({ sources: {
+      http: { enabled: true, config: { url: 'https://example.com/one', feedbackChatId: '',
+        feedbackUrls: [{ id: 'ops', url: 'https://example.com/one-hook' }] } },
+      'http-2': { enabled: true, config: { url: 'https://example.com/two', feedbackChatId: '',
+        feedbackUrls: [{ id: 'ops', url: 'https://example.com/two-hook' }] } } } })
+    const sources = new SourceRegistry(() => settings, new HealthBoard())
+    sources.register(httpKind)
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => answer({ errcode: 0 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const message: OutboundMessage = { id: 'm1', channel: { source: 'http-2', thread: 'http-2:ops', address: { target: 'ops' } },
+      text: 'done', kind: 'reply' }
+    await expect(sources.send(message, {} as Commands)).resolves.toBe('sent')
+    expect(String(fetchMock.mock.calls[0]![0])).toBe('https://example.com/two-hook')
   })
 })
 

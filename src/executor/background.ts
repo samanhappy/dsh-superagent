@@ -13,11 +13,19 @@ interface Jobs {
   kill(id: string, caller: string, reason?: string): unknown
   readonly events: { subscribe(filter: { owner: string }, listener: (event: { type: string }) => void): () => void }
 }
-/** What the Executor uses of DSH's subagents: joining a worker's subagents that work, its subagents, and releasing them. */
+/**
+ * What the Executor uses of DSH's subagents: joining a worker's subagents that work, listing them and releasing them. DSH
+ * 0.2.1 names them `waitForChildren`, `listChildren` and `drainChildren`; 0.2.2 names them `waitForTreeWork`,
+ * `listDescendants` and `drainDescendants`, whose list is recursive and whose release closes the whole tree. A service has
+ * one set; each call takes whichever this DSH has.
+ */
 interface Subagents {
-  waitForChildren(parent: Agent): Promise<boolean>
-  listChildren(parentSessionId: string): Promise<readonly { id: string }[]>
-  drainChildren(parent: Agent, childIds: readonly string[]): Promise<void>
+  waitForChildren?(parent: Agent): Promise<boolean>
+  listChildren?(parentSessionId: string): Promise<readonly { id: string }[]>
+  drainChildren?(parent: Agent, childIds: readonly string[]): Promise<void>
+  waitForTreeWork?(root: Agent): Promise<boolean>
+  listDescendants?(rootSessionId: string): Promise<readonly { id: string; depth: number }[]>
+  drainDescendants?(parents: readonly Agent[]): Promise<void>
 }
 /** How long a stop waits for a killed job to end, collecting its end so the worker is not woken to hear of it. */
 const KILL_WAIT_MS = 10_000
@@ -49,10 +57,23 @@ const joins = new WeakMap<Agent, Promise<boolean>>()
 function childrenEnd(subagents: Subagents, agent: Agent): Promise<boolean> {
   let join = joins.get(agent)
   if (!join) {
-    join = subagents.waitForChildren(agent).finally(() => { joins.delete(agent) })
+    const wait = subagents.waitForChildren ?? subagents.waitForTreeWork
+    if (!wait) return Promise.resolve(false)
+    join = wait.call(subagents, agent).finally(() => { joins.delete(agent) })
     joins.set(agent, join)
   }
   return join
+}
+/** The direct children of a Session, by the catalog this DSH has. DSH 0.2.2 lists a whole tree, whose direct children are depth 1. */
+async function children(subagents: Subagents, sessionId: string): Promise<readonly string[]> {
+  if (subagents.listChildren) return (await subagents.listChildren(sessionId)).map(child => child.id)
+  const entries = await subagents.listDescendants?.(sessionId) ?? []
+  return entries.filter(entry => entry.depth === 1).map(entry => entry.id)
+}
+/** Release the live direct children of `agent`, or its whole tree where DSH releases no selected children. */
+function release(subagents: Subagents, agent: Agent, ids: readonly string[]): Promise<void> {
+  if (subagents.drainChildren) return subagents.drainChildren(agent, ids)
+  return subagents.drainDescendants?.([agent]) ?? Promise.resolve()
 }
 
 /** A job by its id and the first line of its label. */
@@ -142,9 +163,9 @@ export async function stopSubagents(ctx: Context, agent: Agent, keepInbox = fals
   const subagents = subagentsOf(ctx)
   if (!subagents) return
   // The catalog lists every subagent the Session had; one that ended has no agent.
-  const live = (await subagents.listChildren(agent.id)).map(child => child.id).filter(id => ctx.agents.get(id as SessionId))
+  const live = (await children(subagents, agent.id)).filter(id => ctx.agents.get(id as SessionId))
   if (!live.length) return
-  try { await until(subagents.drainChildren(agent, live), undefined, DRAIN_LIMIT_MS) }
+  try { await until(release(subagents, agent, live), undefined, DRAIN_LIMIT_MS) }
   finally {
     if (agent.status !== 'idle') cancelled.add(agent)
     agent.cancel({ kind: 'user' }, { keepInbox })

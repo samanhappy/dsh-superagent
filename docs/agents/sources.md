@@ -20,6 +20,7 @@ A Source is not done until all of these exist:
 ## Rules
 
 - **An installed but unconfigured Source stays paused** and says what it waits for. It never fails the bundle or another Source.
+- **A kind that runs several instances sets `multi: true`.** It declares exactly one health entry, cannot sync its Policy part, and its extra instance IDs start with `<kind>-`; the panel offers adding them (`POST sources`, `Settings.addSource`) and removing them (`DELETE sources/:id`, `Settings.removeSource`, which refuses while open Tickets or waiting replies address the instance and releases its health entry). An instance ID must not collide with an installed kind ID or a declared health entry. Each instance has its own settings block, Policy part, page cursor, Triggers, Threads and health entry named by the instance ID, so it never shares a page or an identity with another instance.
 - **A failing Source disables only itself**, reports the reason and backs off. One Source must not break the Runtime.
 - **Name no person, account or organization in code.** Identities come from settings.
 - **Disclose unofficial integrations.** A Source that speaks a protocol not meant for third-party clients must say so in the README and in [006 Deployment](../006-deployment.md), with the account and terms-of-service risk it carries.

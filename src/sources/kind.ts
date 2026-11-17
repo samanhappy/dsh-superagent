@@ -129,6 +129,8 @@ export interface SourceKind<C extends Record<string, unknown> = Record<string, u
   description: Localized
   /** A conversation rather than an issue tracker, such as a chat: a shared Thread follows its live Tickets and at most one ended Ticket. */
   chat?: true
+  /** Whether the panel may add another instance of this kind; each instance then has an ID starting with `<kind>-` and one health entry named by that ID. */
+  multi?: true
   /** Read-only status facts derived from `deployment` (undefined while waiting for setup), keyed by field key. */
   facts?(deployment: Deployment | undefined): Record<string, Localized | string>
   /** Validates stored and submitted configuration and fills defaults. */

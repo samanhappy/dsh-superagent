@@ -626,6 +626,13 @@ describe('a worker whose work runs in the background', () => {
     await vi.waitFor(() => expect(h.jobs.service.kill).toHaveBeenCalledWith(second, sessionId, expect.any(String)))
     expect(h.jobs.service.kill).toHaveBeenCalledWith(first, sessionId, expect.any(String))
   })
+  it('names the cause of a stop that fails in the worker health', async () => {
+    const one = await h.acceptedTicket(feishu('1', '@bot 修一'))
+    h.subagents.service.listChildren.mockImplementationOnce(async () => { throw new Error('SUBAGENT_CONTROL_QUERY_UNAVAILABLE') })
+    h.runtime.engine.stopTicket(one.ticket.id)
+    // The health detail carries the causes an AggregateError keeps out of its message, so the panel names the failure.
+    await vi.waitFor(() => expect(h.runtime.health.worker?.detail).toContain('SUBAGENT_CONTROL_QUERY_UNAVAILABLE'))
+  })
 })
 describe('what a worker read', () => {
   const later = () => new Promise(resolve => setTimeout(resolve, 5))

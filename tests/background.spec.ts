@@ -16,6 +16,35 @@ function setup(waitForChildren: (agent: Agent) => Promise<boolean>, drainChildre
   return { ctx, agent, jobs, subagents }
 }
 
+/** A context with DSH 0.2.2's subagents, which name the tree join, catalog and teardown differently from 0.2.1. */
+function setupTree() {
+  const jobs = jobRegistry()
+  const agent = { id: 'worker-t1', status: 'idle', whenIdle: async () => {}, inbox: { nextTurn: [], nextStep: [] }, cancel: vi.fn() } as unknown as
+    Agent & { status: string; cancel: ReturnType<typeof vi.fn> }
+  const subagents = {
+    waitForTreeWork: vi.fn(async () => false),
+    listDescendants: vi.fn(async () => [{ id: 'child-1', depth: 1 }, { id: 'grandchild-1', depth: 2 }]),
+    drainDescendants: vi.fn(async () => {}),
+  }
+  const services: Record<string, unknown> = { jobs: jobs.service, subagents }
+  const ctx = { get: (name: string) => services[name], agents: { get: () => agent } } as unknown as Context
+  return { ctx, agent, subagents }
+}
+
+it('joins the worker\'s tree through DSH 0.2.2\'s waitForTreeWork', async () => {
+  const { ctx, agent, subagents } = setupTree()
+  expect(await untilQuiet(ctx, agent, new AbortController().signal)).toBe(true)
+  expect(subagents.waitForTreeWork).toHaveBeenCalledWith(agent)
+})
+
+it('stops a worker\'s subagents through DSH 0.2.2\'s listDescendants and drainDescendants', async () => {
+  const { ctx, agent, subagents } = setupTree()
+  await stopSubagents(ctx, agent)
+  expect(subagents.listDescendants).toHaveBeenCalledWith('worker-t1')
+  expect(subagents.drainDescendants).toHaveBeenCalledWith([agent])
+  expect(agent.cancel).toHaveBeenCalledWith({ kind: 'user' }, { keepInbox: false })
+})
+
 it('is not quiet when an end during the subagent check woke the worker, whose own idle looks again', async () => {
   const { ctx, agent, jobs } = setup(async () => {
     // The job settles meanwhile, and its end wakes the worker.

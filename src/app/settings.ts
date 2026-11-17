@@ -22,6 +22,13 @@ export class SettingsConflict extends Error {}
 const now = (): string => new Date().toISOString()
 /** Executor settings that control shell execution paths, prepare commands, and command shims. */
 const environment = ({ executor }: SettingsValue) => JSON.stringify([executor.directory, executor.repository, executor.baseBranch, executor.prepare, executor.blockedCommands])
+/** The first free `<kind>-<n>` instance ID, starting at 2 because the kind's own ID is the default instance. */
+function nextSourceId(sources: SourceRegistry, settings: SettingsValue, kind: string): string {
+  for (let n = 2; ; n += 1) {
+    const id = `${kind}-${n}`
+    if (!settings.sources[id] && !sources.reserved(id)) return id
+  }
+}
 
 /** Schema parser, settings merger, and non-panel origin guard for one settings block kind. */
 interface Block {
@@ -54,7 +61,7 @@ const BLOCKS: Record<'policy' | 'eval' | 'executor' | 'source', Block> = {
 
 /** Host dependencies used by `Settings`. */
 export interface SettingsHost {
-  readonly store: Pick<Store, 'settings' | 'saveSettings' | 'blockRevision' | 'atomic' | 'tickets' | 'get'>
+  readonly store: Pick<Store, 'settings' | 'saveSettings' | 'blockRevision' | 'atomic' | 'tickets' | 'receipts' | 'get'>
   readonly sources: SourceRegistry
   /** Notified when a settings save changes the policy version. */
   readonly engine: EngineForSettings
@@ -137,6 +144,54 @@ export class Settings {
     return { block, revision: store.blockRevision(block as SettingsSave), value }
   }
   /**
+   * Adds an instance of a kind that runs several with its schema defaults, so the panel can offer another endpoint.
+   * @param kindId - The installed kind to add to; it must set `multi`.
+   * @param id - The instance ID, or empty to take the first free `<kind>-<n>` one.
+   * @throws UserError when the kind is not installed or does not run several instances, the ID is malformed, or it exists.
+   */
+  /**
+   * Removes an extra instance of a kind that runs several, together with its Policy part, so no card or entry stays behind.
+   * @throws UserError when it is a default instance, or when open Tickets or replies still address it.
+   */
+  async removeSource(id: string): Promise<{ removed: true }> {
+    const { store, sources, engine, sessions } = this.host
+    const instance = sources.instance(id)
+    if (!instance || instance.id === instance.kind) throw new UserError('sourceDefault', { source: id })
+    if (store.receipts.waiting().some(receipt => receipt.channel.source === id)
+      || store.tickets.open().some(ticket => ticket.mandate.basis.source === id || ticket.channels.some(channel => channel.source === id))) {
+      throw new UserError('sourceInUse', { source: id })
+    }
+    const old = store.settings()
+    const { [id]: _removed, ...sourcesLeft } = old.sources
+    const { [id]: _part, ...policyLeft } = old.policy.sources
+    const settings = SettingsSchema.parse({ ...old, sources: sourcesLeft, policy: { ...old.policy, sources: policyLeft } })
+    const before = policyVersion(old), after = policyVersion(settings)
+    const scope = (version: SettingsValue) => ({
+      scope: (input: { source: string; meta: Record<string, unknown> }) => this.host.sources.scope(input, version) })
+    const effects = before === after ? new Map() : policyEffects(store.tickets.open(), old, settings, scope)
+    store.atomic(() => {
+      store.saveSettings(settings, { source: 'panel', block: `source:${id}`, policyVersion: after, policyChanged: before !== after,
+        notified: [...effects.keys()] })
+      sessions.notify(...settingsNotice(`source:${id}`, [id]))
+      if (before !== after) engine.policyChanged(before, after, effects)
+    })
+    sources.releaseInstance(id)
+    return { removed: true }
+  }
+  async addSource(kindId: string, id: string): Promise<{ id: string; kind: string; revision: number }> {
+    const { sources, store } = this.host
+    const kind = sources.kind(kindId)
+    if (!kind) throw new UserError('sourceNotInstalled', { source: kindId })
+    if (!kind.multi) throw new UserError('sourceNotMulti', { kind: kindId })
+    const name = id.trim() || nextSourceId(sources, store.settings(), kindId)
+    if (!name.startsWith(`${kindId}-`) || !/^[a-z0-9][a-z0-9-]*$/.test(name.slice(kindId.length + 1))) {
+      throw new UserError('sourceNameInvalid', { kind: kindId })
+    }
+    if (store.settings().sources[name] || sources.reserved(name)) throw new UserError('sourceExists', { source: name })
+    const saved = await this.save(`source:${name}`, { enabled: true, config: kind.schema.parse({}) }, 0, 'panel', true)
+    return { id: name, kind: kindId, revision: saved.revision }
+  }
+  /**
    * Validates and saves one settings block against its `revision`; a no-op save records no new revision, a changed policy
    * version notifies affected open tickets, and changing a setup-read field (`SETUP_FIELDS`, such as an account CLI) or any
    * change saved while waiting for setup (`!this.host.setup.configured()`) restarts `dsh-superagent` so setup runs again.
@@ -145,7 +200,7 @@ export class Settings {
    * @throws SettingsConflict when `block`'s revision changed before or during validation checks.
    * @throws UserError | z.ZodError when `block` is unknown, the source is not installed, `value` is invalid (such as an `executor` block carrying `paused`, which only `pause` sets), a non-panel `origin` changes panel-only fields, or a role-model or account check fails.
    */
-  async save(block: SettingsBlock, value: unknown, revision: number, origin: SettingsOrigin) {
+  async save(block: SettingsBlock, value: unknown, revision: number, origin: SettingsOrigin, create = false) {
     const { store, sources, engine, sessions } = this.host
     const stale = () => revision !== store.blockRevision(block)
     if (stale()) throw new SettingsConflict('Settings changed. Reload before saving.')
@@ -153,7 +208,8 @@ export class Settings {
     const kind = block.startsWith('source:') ? 'source' : block
     if (!(kind in BLOCKS)) throw new UserError('unknownBlock', { block })
     const rules = BLOCKS[kind as keyof typeof BLOCKS]
-    if (kind === 'source' && !sources.kind(id)) throw new UserError('sourceNotInstalled', { source: id })
+    // A source block is saved only for an instance that exists, unless `addSource` is creating it now.
+    if (kind === 'source' && !create && !sources.instance(id)) throw new UserError('sourceNotInstalled', { source: id })
     const parsed = rules.parse(value, sources, id)
     const current = store.settings()
     const candidate = rules.merge(current, parsed, id)
@@ -217,7 +273,7 @@ export class Settings {
     const { sources } = this.host
     if (!this.host.setup.configured()) return []
     return sources.instances().filter(instance => instance.installed && instance.enabled).flatMap(instance => {
-      const sync = sources.kind(instance.id)?.policy?.sync
+      const sync = sources.kindFor(instance.id)?.policy?.sync
       const part = sources.policyPart(instance.id)
       return sync && part && sync.ready(part) ? [instance.id] : []
     })
@@ -234,7 +290,7 @@ export class Settings {
     const health = this.syncHealth(id)
     try {
       const revision = store.blockRevision('policy')
-      const part = await sources.kind(id)!.policy!.sync!.run(this.host.sourceHost, sources.policyPart(id)!, this.host.lifetime)
+      const part = await sources.kindFor(id)!.policy!.sync!.run(this.host.sourceHost, sources.policyPart(id)!, this.host.lifetime)
       if (revision !== store.blockRevision('policy')) throw new SettingsConflict('Policy changed during synchronization. Retry with the current settings.')
       const policy = store.settings().policy
       // Skip saving a new revision when the synced list is unchanged.

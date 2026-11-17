@@ -23,6 +23,10 @@ export interface Api {
   'GET search': { query: { q: string }; response: SearchView }
   'GET sources': { response: SourceStatusView[] }
   'GET settings': { response: SettingsView }
+  /** Adds another instance of a Source kind that runs several, such as a second HTTP endpoint. */
+  'POST sources': { body: { kind: string; id?: string }; response: { id: string; kind: string; revision: number } }
+  /** Removes an extra instance of a Source kind and its Policy part; open Tickets or waiting replies refuse it. */
+  'DELETE sources/:id': { response: { removed: true } }
   'POST sources/:id/labels': { response: { added: string[] } }
   /** Starts the Source's interactive login; `code` answers a `need_verifycode` attempt, and no body is a start too. */
   'POST sources/:id/login': { body?: { code?: string }; response: LoginPageView }

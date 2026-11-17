@@ -11,6 +11,8 @@ import { snapshot, threadSummary, ticketSummary, triggerView } from '../src/app/
 import { basisFacts, ticketDetail } from '../src/app/views/tickets.ts'
 import { threadDetail } from '../src/app/views/threads.ts'
 import { droppedReplies, sourcesStatus } from '../src/app/views/sources.ts'
+import { settingsView } from '../src/app/views/settings.ts'
+import { httpKind } from '../src/sources/http.ts'
 import { overview } from '../src/app/views/overview.ts'
 import { markdown, plain } from '../src/app/views/text.ts'
 import { policyHistory } from '../src/app/settings-history.ts'
@@ -126,6 +128,21 @@ it('states each Source by the first state that holds', () => {
   expect(states({ problem }, { feishu: { state: 'ready', detail: '' }, history: { state: 'ready', detail: '' }, github: { state: 'ready',
     detail: '' } }))
     .toEqual({ feishu: 'setup', github: 'setup' })
+})
+
+it('lists every added instance of a Source with its own title and settings', () => {
+  store.saveSettings(SettingsSchema.parse({ sources: {
+    http: { enabled: true, config: { url: 'https://example.com/one' } },
+    'http-2': { enabled: true, config: { url: 'https://example.com/two' } } } }))
+  const sources = new SourceRegistry(() => store.settings())
+  sources.register(httpKind)
+  const cards = Object.fromEntries(settingsView(store, sources, {}, {}, directory).sources.map(source => [source.id, source]))
+  expect(Object.keys(cards)).toEqual(['http', 'http-2'])
+  expect(cards['http']!.title).toEqual({ zh: 'HTTP 事件', en: 'HTTP events' })
+  expect(cards['http-2']!.title.en).toBe('HTTP events · http-2')
+  expect(cards['http-2']).toMatchObject({ kind: 'http', multi: true, kindTitle: { en: 'HTTP events' },
+    value: { enabled: true, config: { url: 'https://example.com/two' } } })
+  expect(cards['http-2']!.policy!.rows).toMatchObject([{ id: 'default' }])
 })
 
 it('follows the Ticket\'s stage: a blocked Ticket a person answered since is working, with no retry, note or turn end', () => {

@@ -283,7 +283,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 - MasterAssessor reads repository files with `readRepositoryPath`.
 - Sessions and Prompts register built-in skills only for GitHub, GitLab, Feishu and PingCode. Migration converts their schema-10 records.
 - Setup probes only GitHub, GitLab, Feishu and PingCode account fields (`SETUP_FIELDS`); the WeCom and WeChat fields are read there without a probe, so their credentials are known only once the Source connects. Only Feishu, GitLab and PingCode Sources receive account setup problems through `SourceContext.problem`.
-- The HTTP Source names the WeCom Source for its primary replies (`source: 'wecom'`, the `chatId` of a `wecom:<chatId>` Thread), so that delivery depends on the WeCom plugin; its extra targets use its own Channel.
+- The HTTP Source names the WeCom Source for its primary replies (`source: 'wecom'`, the `chatId` of a `wecom:<chatId>` Thread), so that delivery depends on the WeCom plugin; its extra targets use its own Channel. A kind marked `multi` may run several instances: an instance ID starts with `<kind>-` and is otherwise opaque, and the registry resolves it to its kind, so `settings.sources`, `policy.sources`, Triggers, Threads and receipts are all keyed by the instance ID. Each instance has its own page cursor and its own health entry, named by the instance ID; the default instance keeps its kind's declared entries. Plain `http` remains the default instance, so existing settings and Threads need no migration.
 
 
 ## Modules
@@ -363,7 +363,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/registry.ts` | `SourceRegistry` |
 | `src/sources/host.ts` | `SourceHost`, `SourceContext`, `Health`, `health` and the fixed health texts |
 | `src/sources/poll.ts` | What GitHub, GitLab, Feishu and PingCode polling share: `POLL_HORIZON_MS`, `polled`, `cursorAt`, and `pollThreads`, which keeps a failure on its Thread as `pollError` |
-| `src/sources/http.ts` | The HTTP kind and plugin entry, exported as `./http-watch`: a poll round of an endpoint's items, the primary WeCom Channel, the extra group-bot Channels, its Policy part and its loop |
+| `src/sources/http.ts` | The HTTP kind and plugin entry, exported as `./http-watch`: one kind that the panel may instantiate several times (`multi`), with a poll round of an endpoint's items, the primary WeCom Channel, the extra group-bot Channels, its Policy part, and a loop that polls every instance on its own interval with its own cursor and health entry |
 | `src/sources/github.ts` | The GitHub kind and plugin entry, exported as `./github-watch`: a poll round of notifications, the pull requests of open Tickets with their CI, and subscribed Threads |
 | `src/sources/github-trigger.ts` | GitHub comments, reviews, Issue bodies and CI changes as Triggers, and GitHub addresses |
 | `src/sources/github-pull.ts` | The pull request rules: which pull requests a Ticket follows (`claimPull`, `observePull`), the closes it reports to the Engine, and `pullEndNotices`, the chat notice of a Ticket that ended merged or closed |

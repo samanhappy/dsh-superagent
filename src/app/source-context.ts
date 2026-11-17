@@ -3,6 +3,7 @@ import type { EngineForSources, ReceiveResult, Trigger } from '../core/index.ts'
 import type { Deployment } from '../deployment.ts'
 import type { Commands } from '../infra/commands.ts'
 import type { SetupProblem } from '../setup.ts'
+import type { HealthEntry } from '../infra/health.ts'
 import type { SourceContext } from '../sources/host.ts'
 import type { SourceRegistry } from '../sources/registry.ts'
 import type { Outbox } from './outbox.ts'
@@ -31,12 +32,13 @@ export interface SourceContextDeps {
 }
 
 /**
- * Builds the context for one Source kind. Health reports are restricted to entries declared by the kind and
- * bound to the active registration, becoming no-ops once unregistered.
+ * Builds the context for one Source kind. Health reports go to the kind's declared entries, or to an extra instance's
+ * own entry, and become no-ops once the kind unregisters.
  */
 export function sourceContextOf(deps: SourceContextDeps, kind: { kind: string; health: readonly string[] }): SourceContext {
   const { store } = deps
-  const health = deps.sources.healthEntries(kind.health)
+  // Snapshot declared entries, so a report after the kind unregistered is a no-op rather than a write to a later registration.
+  const declared = deps.sources.healthEntries(kind.health)
   return {
     get deployment() { return deps.deployment },
     commands: deps.commands,
@@ -47,6 +49,7 @@ export function sourceContextOf(deps: SourceContextDeps, kind: { kind: string; h
       const instance = deps.sources.instance<C>(id)
       return instance?.enabled ? instance.config : undefined
     },
+    instances: () => deps.sources.instances().filter(instance => instance.installed && instance.kind === kind.kind),
     receive: trigger => deps.receive(trigger),
     atomic: work => store.atomic(work),
     state: {
@@ -70,8 +73,15 @@ export function sourceContextOf(deps: SourceContextDeps, kind: { kind: string; h
       recent: (thread, limit) => store.read.threadTriggers(thread, limit) },
     notify: message => { deps.outbox.send(message) },
     report: (entry, value) => {
-      if (!kind.health.includes(entry)) throw new Error(`The ${kind.kind} Source has no health entry ${entry}`)
-      health.get(entry)?.set(value)
+      // A declared entry keeps the binding from registration time; after unregistering it is released, so late reports are no-ops.
+      if (declared.has(entry)) { declared.get(entry)?.set(value); return }
+      const target = deps.sources.healthEntry(kind.kind, entry)
+      if (target) { target.set(value); return }
+      const current = deps.sources.kind(kind.kind)
+      if (!current) return
+      // An extra instance can be removed while its round is still running, so its late report is a no-op, not a failure.
+      if (current.multi && entry.startsWith(`${current.kind}-`)) return
+      throw new Error(`The ${kind.kind} Source has no health entry ${entry}`)
     },
   }
 }

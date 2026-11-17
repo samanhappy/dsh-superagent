@@ -36,7 +36,7 @@ export interface HttpHost {
   readonly sources: SourceRegistry
   readonly prompts: Pick<Prompts, 'current' | 'version' | 'history' | 'preview' | 'save' | 'defaultChanged'>
   readonly sessions: Pick<Sessions, 'status' | 'notify' | 'delivery'>
-  readonly settings: Pick<Settings, 'view' | 'save' | 'pause' | 'sync' | 'refreshLabels' | 'block'>
+  readonly settings: Pick<Settings, 'view' | 'save' | 'pause' | 'sync' | 'refreshLabels' | 'block' | 'addSource' | 'removeSource'>
   readonly engine: EngineForPeople
   readonly executor: Pick<DshExecutor, 'activeCount'>
   readonly health: Record<string, Health>
@@ -212,6 +212,11 @@ function routes(runtime: HttpHost): Routes {
     'GET search': ({ query }) => search(views(runtime), query.q ?? '', runtime.sourceLinks),
     'GET sources': () => sourcesStatus(views(runtime), runtime.health, setupState(runtime)),
     'GET settings': () => settingsView(store, runtime.sources, runtime.health, setupState(runtime), runtime.machine.stateDir),
+    'POST sources': async input => {
+      const request = z.object({ kind: z.string().trim().min(1), id: z.string().trim().max(80).optional() }).parse(await input.body())
+      return runtime.settings.addSource(request.kind, request.id ?? '')
+    },
+    'DELETE sources/:id': async ({ params }) => runtime.settings.removeSource(params.id),
     'POST sources/:id/labels': ({ params }) => runtime.settings.refreshLabels(params.id),
     'POST sources/:id/login': async input => {
       const { id } = input.params

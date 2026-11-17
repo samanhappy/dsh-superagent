@@ -2,17 +2,18 @@
 import { SETUP_FIELDS } from '../../deployment.ts'
 import { KV } from '../../kv.ts'
 import { policyVersion } from '../../policy.ts'
+import type { SourceInstance } from '../../sources/kind.ts'
 import type { SourceRegistry } from '../../sources/registry.ts'
 import { declaredVariables, executionRoot } from '../execution-environment.ts'
 import type { Store } from '../store.ts'
 import { problemOf, sourceHealth, type HealthMap, type SetupState } from './sources.ts'
 
-function policyOf(sources: SourceRegistry, id: string, health: HealthMap) {
-  const policy = sources.kind(id)?.policy
+function policyOf(sources: SourceRegistry, instance: SourceInstance, health: HealthMap) {
+  const policy = sources.kind(instance.kind)?.policy
   if (!policy) return {}
-  const part = sources.policyPart(id)!
-  const config = sources.instance(id)?.config ?? {}
-  const sync = policy.sync && { label: policy.sync.label, ready: policy.sync.ready(part), health: health[`sync:${id}`] }
+  const part = sources.policyPart(instance.id)!
+  const config = instance.config
+  const sync = policy.sync && { label: policy.sync.label, ready: policy.sync.ready(part), health: health[`sync:${instance.id}`] }
   return { policy: { fields: policy.fields, explicit: policy.explicit, ...policy.rows ? { rows: policy.rows(config) } : {}, ...sync
     ? { sync } : {} } }
 }
@@ -31,12 +32,13 @@ export function settingsView(store: Store, sources: SourceRegistry, health: Heal
       const kind = sources.kind(instance.kind)
       const problem = problemOf(instance.id, setup)
       const { id, title } = sourceHealth(sources, instance, health)
-      return { id, kind: instance.kind, title, description: kind?.description ?? { zh: '', en: '' }, installed: instance.installed,
+      return { id, kind: instance.kind, multi: kind?.multi === true, kindTitle: kind?.title ?? { zh: instance.id, en: instance.id },
+        title, description: kind?.description ?? { zh: '', en: '' }, installed: instance.installed,
         value: { enabled: instance.enabled, config: instance.config }, revision: store.blockRevision(`source:${instance.id}`),
         restarts: SETUP_FIELDS[instance.id] ?? [], fields: kind?.fields ?? [], facts: kind?.facts?.(setup.deployment) ?? {},
         labels: store.get(KV.sources.labels(instance.id)) ?? {},
         ...kind?.login ? { login: { label: kind.login.label, ...kind.login.hint ? { hint: kind.login.hint } : {} } } : {},
-        ...problem ? { problem } : {}, ...policyOf(sources, instance.id, health) }
+        ...problem ? { problem } : {}, ...policyOf(sources, instance, health) }
     }),
     environment: { root: executionRoot(settings, stateDir), variables: declaredVariables(sources, settings) },
   }

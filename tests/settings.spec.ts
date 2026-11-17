@@ -1,10 +1,11 @@
 /** Concurrency, retry, and validation tests for settings saves, pause toggling, and policy synchronization. */
 import { afterEach, expect, it, vi } from 'vitest'
-import { UserError } from '../src/core/index.ts'
+import { UserError, type OutboundMessage } from '../src/core/index.ts'
 import { Commands } from '../src/infra/commands.ts'
 import { Setup } from '../src/app/setup.ts'
 import { SettingsConflict } from '../src/app/settings.ts'
 import { startRuntime, type Host } from './fixtures/host.ts'
+import { httpKind } from '../src/sources/http.ts'
 
 let h: Host | undefined
 afterEach(async () => { await h?.stop(); h = undefined })
@@ -39,6 +40,44 @@ it('refuses a save of a block that another save changed during its model or acco
   accounts.resolve()
   await expect(moved).rejects.toThrow(SettingsConflict)
   expect(store.settings().sources.github!.config).toMatchObject({ cli: value.config.cli, pollSeconds: 90 })
+})
+
+it('adds another instance of a Source that runs several, and refuses invalid ones', async () => {
+  h = await startRuntime()
+  const { settings, store, sources } = h.runtime
+  sources.register(httpKind)
+  await expect(settings.addSource('github', 'github-2')).rejects.toThrow(new UserError('sourceNotMulti', { kind: 'github' }))
+  await expect(settings.addSource('http', 'other')).rejects.toThrow(new UserError('sourceNameInvalid', { kind: 'http' }))
+  const added = await settings.addSource('http', '')
+  expect(added).toMatchObject({ id: 'http-2', kind: 'http' })
+  expect(store.settings().sources['http-2']).toMatchObject({ enabled: true, config: { url: '' } })
+  expect(sources.instances().find(instance => instance.id === 'http-2')).toMatchObject({ kind: 'http' })
+  // The new instance is enabled and scopes its own configuration: no event kind is declared yet, so nothing is listened to.
+  expect(sources.scope({ source: 'http-2', meta: { kind: 'alert' } })).toEqual({ listened: false, reason: 'kind_not_listed' })
+  await expect(settings.addSource('http', 'http-2')).rejects.toThrow(new UserError('sourceExists', { source: 'http-2' }))
+  // The new instance saves its own block, and its own ID is a valid settings block from then on.
+  const block = settings.block('source:http-2')
+  await expect(settings.save('source:http-2', { ...(block.value as Record<string, unknown>),
+    config: { url: 'https://example.com/events' } }, block.revision, 'panel')).resolves.toMatchObject({ saved: true })
+  expect(store.settings().sources['http-2']!.config).toMatchObject({ url: 'https://example.com/events' })
+})
+
+it('removes an added instance with its Policy part, releasing it, and refuses one still in use', async () => {
+  h = await startRuntime()
+  const { settings, store, sources } = h.runtime
+  sources.register(httpKind)
+  await settings.addSource('http', 'http-2')
+  await expect(settings.removeSource('http')).rejects.toThrow(new UserError('sourceDefault', { source: 'http' }))
+  const message: OutboundMessage = { id: 'm1', channel: { source: 'http-2', thread: 'http-2:ops', address: { target: 'ops' } },
+    text: 'hi', kind: 'reply' }
+  store.receipts.add(message)
+  await expect(settings.removeSource('http-2')).rejects.toThrow(new UserError('sourceInUse', { source: 'http-2' }))
+  store.receipts.settle(message, 'sent')
+  await expect(settings.removeSource('http-2')).resolves.toEqual({ removed: true })
+  expect(store.settings().sources['http-2']).toBeUndefined()
+  expect(store.settings().policy.sources['http-2']).toBeUndefined()
+  expect(sources.instances().some(instance => instance.id === 'http-2')).toBe(false)
+  expect(() => settings.block('source:http-2')).toThrow(new UserError('unknownBlock', { block: 'source:http-2' }))
 })
 
 it('refuses a Policy sync that a Policy save outran, reports it on sync:feishu, and keeps the save', async () => {

@@ -12,6 +12,7 @@ import { feishuChannel, feishuTrigger, feishuTriggerId } from '../src/sources/fe
 import { testDeployment } from './fixtures/deployment.ts'
 import { feishuKind } from '../src/sources/feishu.ts'
 import { githubKind } from '../src/sources/github.ts'
+import { httpKind } from '../src/sources/http.ts'
 
 const probe: SourceKind<{ interval: number }> = {
   kind: 'probe', title: { zh: '探针', en: 'Probe' }, description: { zh: '', en: '' }, health: [],
@@ -97,6 +98,28 @@ describe('Source registry', () => {
     expect(board.all.github).toEqual({ state: 'starting', detail: '' })
     context(githubKind).report('github', { state: 'ready', detail: 'again' })
     expect(board.all.github).toEqual({ state: 'ready', detail: 'again' })
+  })
+  it('runs several instances of a kind that opts in, resolving each ID to its kind and claiming an entry per instance', () => {
+    const settings = SettingsSchema.parse({ sources: { 'http-2': { enabled: true, config: { url: 'https://example.com/two' } } },
+      policy: { sources: { 'http-2': { admission: { default: { unlistedAddressed: 'ignore' } } } } } })
+    const board = new HealthBoard()
+    const sources = new SourceRegistry(() => settings, board)
+    sources.register(httpKind)
+    expect(sources.kindFor('http')).toBe(httpKind)
+    expect(sources.kindFor('http-2')).toBe(httpKind)
+    // Only a kind that sets `multi` may have extra instances, so a GitHub instance ID never resolves.
+    expect(sources.kindFor('github-2')).toBeUndefined()
+    expect(sources.instances().map(instance => [instance.id, instance.kind])).toEqual([['http', 'http'], ['http-2', 'http']])
+    expect(sources.healthNames(sources.instances()[1]!)).toEqual(['http-2'])
+    expect(sources.policyPart('http-2')!.admission.default!.unlistedAddressed).toBe('ignore')
+    const context = sourceContextOf({ sources } as unknown as SourceContextDeps, httpKind)
+    context.report('http-2', { state: 'ready', detail: 'ok' })
+    expect(board.all['http-2']).toEqual({ state: 'ready', detail: 'ok' })
+    // A removed instance's late report is a no-op; a name that is not an instance of this kind is refused.
+    context.report('http-3', { state: 'ready', detail: '' })
+    expect(() => context.report('nope', { state: 'ready', detail: '' })).toThrow('has no health entry nope')
+    // A kind that runs several declares exactly one health entry, since each instance names its own.
+    expect(() => sources.register({ ...httpKind, kind: 'twin', health: ['twin', 'twin-2'] })).toThrow('exactly one')
   })
   it('names the Trigger whose message a Trigger\'s message answers, where its kind can', () => {
     const sources = new SourceRegistry(() => SettingsSchema.parse({}))

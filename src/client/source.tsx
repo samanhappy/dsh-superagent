@@ -53,6 +53,7 @@ function SourceCard({ source, focus }: { source: SourceView; focus?: boolean }) 
         </div>
         {source.installed && <Switch checked={value.enabled} onChange={enabled => draft.edit({ ...value, enabled })}
           label={t('sourceEnable', { name: localized(t, source.title) })} />}
+        {source.installed && source.multi && source.id !== source.kind && <RemoveSource source={source} />}
       </div>
       {problem && <div className="dt-row-buttons">
         <p className="dt-error" role="status"><SetupMessage problem={problem} lead /></p><CheckSetupButton />
@@ -136,10 +137,54 @@ function SourceLogin({ source, login }: { source: string; login: NonNullable<Sou
   </div>
 }
 
+/** The form that adds another instance of a kind that runs several, such as a second HTTP endpoint. */
+function AddSource({ source }: { source: SourceView }) {
+  const { t, call, notify } = usePanel()
+  const { reload } = useSettings()
+  const [id, setId] = useState('')
+  const add = useAction(async () => {
+    const created = await call('POST sources', { body: { kind: source.kind, ...(id.trim() ? { id: id.trim() } : {}) } })
+    setId('')
+    notify(t('sourceAdded', { name: created.id }))
+  }, { reload })
+  return <div className="dt-field">
+    <span className="dt-field-head">{localized(t, source.kindTitle)}</span>
+    <div className="dt-actions">
+      <Input aria-label={t('sourceInstanceName')} placeholder={t('sourceInstanceNameHint')} value={id}
+        onChange={event => setId(event.target.value)} />
+      <Button variant="outline" size="sm" disabled={add.busy} aria-busy={add.busy}
+        onClick={() => { void add.run() }}>{t('sourceAdd')}</Button>
+    </div>
+  </div>
+}
+
+  /** The two-step removal of an extra instance, so one misclick does not delete its settings and admission row. */
+function RemoveSource({ source }: { source: SourceView }) {
+  const { t, call, notify } = usePanel()
+  const { reload } = useSettings()
+  const [armed, setArmed] = useState(false)
+  const remove = useAction(async () => {
+    await call('DELETE sources/:id', { id: source.id })
+    notify(t('sourceRemoved', { name: source.id }))
+  }, { reload })
+  return <Button variant="ghost" size="sm" disabled={remove.busy} aria-busy={remove.busy}
+    onClick={() => { if (armed) void remove.run(); else setArmed(true) }}>
+    {armed ? t('removeSourceConfirm') : t('removeSource')}
+  </Button>
+}
+
 export function SourceSettings({ focus }: { focus?: string }) {
+  const { t } = usePanel()
   const { sources } = useSettings().settings
+  const addable = [...new Map(sources.filter(source => source.multi && source.installed).map(source => [source.kind, source])).values()]
   useEffect(() => { if (focus) document.getElementById(`dt-source-${focus}`)?.scrollIntoView?.({ block: 'start' }) }, [focus])
   return <div className="dt-form">
+    {addable.length > 0 && <div className="dt-card">
+      <div className="dt-card-head"><div className="dt-row-main"><div className="dt-row-title">
+        <span className="dt-card-title">{t('addSource')}</span><InfoTip text={t('addSourceHint')} />
+      </div></div></div>
+      <div className="dt-card-body">{addable.map(source => <AddSource key={source.kind} source={source} />)}</div>
+    </div>}
     {sources.map(source => <SourceCard key={source.id} source={source} focus={source.id === focus} />)}
     <ConfigHistory blocks={['source:']} />
   </div>

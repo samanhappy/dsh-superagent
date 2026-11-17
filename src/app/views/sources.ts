@@ -13,11 +13,14 @@ export type HealthMap = Record<string, Health>
 export function sourceHealth(sources: SourceRegistry, instance: SourceInstance, health: HealthMap) {
   const kind = sources.kind(instance.kind)
   const starting: Health = { state: 'starting', detail: '' }
-  const parts = (kind?.health ?? []).map(name => {
+  const parts = sources.healthNames(instance).map(name => {
     const entry = health[name]
     return { name, ...(!entry || (instance.enabled && entry.code === 'sourceOff') ? starting : entry) }
   })
-  return { id: instance.id, title: kind?.title ?? { zh: instance.id, en: instance.id }, health: parts }
+  // A second instance of a kind shows its own ID, since several cards would otherwise share one title.
+  const title = kind ? instance.id === kind.kind ? kind.title : { zh: `${kind.title.zh} · ${instance.id}`, en: `${kind.title.en} · ${instance.id}` }
+    : { zh: instance.id, en: instance.id }
+  return { id: instance.id, title, health: parts }
 }
 export interface SetupState {
   /** Resolved deployment facts; undefined while waiting for initial setup. */
