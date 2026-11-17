@@ -1,0 +1,74 @@
+README.md
+  h_18676a549cd52a 36
+README.zh-CN.md
+  h_18676a549cd52a 35
+docs/006-deployment.md
+  h_18676a549cd52a 128-131
+docs/007-architecture.md
+  h_18676a549cd52a 286,366
+docs/agents/sources.md
+  h_18676a549cd52a 23
+src/app/api.ts
+  h_18676a549cd52a 26-29
+src/app/http.ts
+  h_18676a549cd52a 39,215-219
+src/app/settings-history.ts
+  h_18676a549cd52a 41,58
+src/app/settings.ts
+  h_18676a549cd52a 25-31,64,146-193,203,211-212,276,293
+src/app/source-context.ts
+  h_18676a549cd52a 6,35-36,40-41,52,76-84
+src/app/views/overview.ts
+  h_18676a549cd52a 47
+src/app/views/records.ts
+  h_18676a549cd52a 64
+src/app/views/settings.ts
+  h_18676a549cd52a 5,11-12,14-16,35-36,41
+src/app/views/sources.ts
+  h_18676a549cd52a 16,20-23
+src/client/locales.ts
+  h_18676a549cd52a 168-177,769-773
+src/client/source.tsx
+  h_18676a549cd52a 56,140-175,177,179,182-187
+src/core/errors.ts
+  h_18676a549cd52a 46-50
+src/executor/background.ts
+  h_18676a549cd52a 16-21,23-28,60-62,67-77,166,168
+src/executor/dsh.ts
+  h_18676a549cd52a 59-64,560
+src/kv.ts
+  h_18676a549cd52a 60-64
+src/sources/host.ts
+  h_18676a549cd52a 7,47-48
+src/sources/http.ts
+  h_18676a549cd52a 1,5,11,15,68,73,77,81,83-85,93-95,133-135,142,147,177-180,184,187-188,190-213,215-216,218,222,227-228,230,293-294
+src/sources/kind.ts
+  h_18676a549cd52a 132-133
+src/sources/registry.ts
+  h_18676a549cd52a 12-13,17-20,30-34,36,39,44,46-78,81-91,95-96,98,100-109,112-119,121,125,128,135,142,144-145,152-155,163,165,169,171,174-176,178,185,187,190,202,206-207,211,213
+tests/background.spec.ts
+  h_18676a549cd52a 19-47
+tests/fixtures/panel-server.ts
+  h_18676a549cd52a 147-148,320-321
+tests/http-source.spec.ts
+  h_18676a549cd52a 25,157-234
+tests/registry.spec.ts
+  h_18676a549cd52a 15,102-123
+tests/runtime-concurrency.spec.ts
+  h_18676a549cd52a 629-635
+tests/settings.spec.ts
+  h_18676a549cd52a 3,8,45-82
+tests/views.spec.ts
+  h_18676a549cd52a 14-15,133-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3389e92c61696a405d0322e0208a0a1b7a2fab25",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
