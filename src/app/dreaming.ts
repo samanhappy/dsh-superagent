@@ -25,6 +25,7 @@ export interface DreamingHost {
   readonly sessions: Pick<Sessions, 'relay'>
   readonly settings: () => { eval: Pick<Settings['eval'], 'dreaming'> }
   readonly configured: () => boolean
+  readonly paused: () => boolean
   readonly closing: () => boolean
   readonly now?: () => number
   readonly report?: (error: unknown) => void
@@ -32,7 +33,7 @@ export interface DreamingHost {
 
 /**
  * Runs one idle retrospective per configured interval. A review is due only while the agent is idle: no Ticket is open,
- * setup is complete and the process is not closing. The last run is recorded before the relay is queued, so a restart
+ * setup is complete, processing is not paused and the process is not closing. The last run is recorded before the relay is queued, so a restart
  * does not repeat it; the relay itself is durable in the effect queue and starts the main Session's turn.
  */
 export class Dreaming {
@@ -44,7 +45,7 @@ export class Dreaming {
   stop(): void { clearInterval(this.timer); this.timer = undefined }
   /** Queues a review if one is due; exposed for tests and for an immediate check after a settings save. */
   async check(): Promise<void> {
-    if (this.checking || !this.host.configured() || this.host.closing()) return
+    if (this.checking || this.host.paused() || !this.host.configured() || this.host.closing()) return
     const { enabled, intervalHours } = this.host.settings().eval.dreaming
     if (!enabled || this.host.store.tickets.open().length) return
     const now = this.host.now?.() ?? Date.now()

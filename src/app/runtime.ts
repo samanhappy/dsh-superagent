@@ -190,7 +190,7 @@ export class Runtime extends Service implements SourceHost {
       const evals = board.claim('evals', { state: 'ready', detail: 'No unavailable Eval in the last hour' })
       const evaluateDue = () => { engine.evaluateDue(); evals.set(evalsHealth(store)) }
       this.dreaming = new Dreaming({ store, sessions, settings: () => store.settings(),
-        configured: () => setup.configured(), closing: () => this.closing(),
+        configured: () => setup.configured(), paused: () => this.paused(), closing: () => this.closing(),
         report: error => ctx.logger.warn('dsh-superagent: dreaming failed: %s', String(error)) })
       const passes = this.passes = new Passes({ engine: { receive: trigger => engine.receive(trigger), evaluateDue }, effects,
         health: this.runtimeHealth, lifetime: this.lifetime, configured: () => setup.configured(), closing: () => this.closing() })

@@ -5,8 +5,8 @@ import { SettingsSchema } from '../src/policy.ts'
 
 const DAY = 24 * 3_600_000
 
-function harness(overrides: { enabled?: boolean; intervalHours?: number; open?: boolean; configured?: boolean; closing?: boolean
-  lastRun?: string; now?: number } = {}) {
+function harness(overrides: { enabled?: boolean; intervalHours?: number; open?: boolean; configured?: boolean; paused?: boolean
+  closing?: boolean; lastRun?: string; now?: number } = {}) {
   const values = new Map<string, unknown>()
   if (overrides.lastRun !== undefined) values.set(KV.dreaming.lastRun, overrides.lastRun)
   const relay = vi.fn()
@@ -16,6 +16,7 @@ function harness(overrides: { enabled?: boolean; intervalHours?: number; open?: 
     sessions: { relay },
     settings: () => ({ eval: { dreaming: { enabled: overrides.enabled ?? true, intervalHours: overrides.intervalHours ?? 24 } } }),
     configured: () => overrides.configured ?? true,
+    paused: () => overrides.paused ?? false,
     closing: () => overrides.closing ?? false,
     now: () => overrides.now ?? Date.parse('2026-11-25T00:00:00.000Z'),
   }
@@ -46,6 +47,15 @@ describe('Dreaming', () => {
     const due = harness({ lastRun: new Date(Date.parse('2026-11-25T00:00:00.000Z') - DAY).toISOString() })
     await due.dreaming.check()
     expect(due.relay).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays quiet while processing is paused, and runs once it resumes', async () => {
+    const paused = harness({ paused: true })
+    await paused.dreaming.check()
+    expect(paused.relay).not.toHaveBeenCalled()
+    const resumed = harness({ lastRun: new Date(Date.parse('2026-11-25T00:00:00.000Z') - DAY).toISOString() })
+    await resumed.dreaming.check()
+    expect(resumed.relay).toHaveBeenCalledTimes(1)
   })
 
   it('stays quiet while disabled, unconfigured or closing', async () => {
