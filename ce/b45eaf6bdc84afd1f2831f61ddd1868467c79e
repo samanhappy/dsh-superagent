@@ -1,0 +1,34 @@
+docs/006-deployment.md
+  h_18676a549cd52a 301
+docs/007-architecture.md
+  h_18676a549cd52a 41,320,451
+src/app/dreaming.ts
+  h_18676a549cd52a 1-60
+src/app/runtime.ts
+  h_18676a549cd52a 41,78,192-194,260,277
+src/client/eval.tsx
+  h_18676a549cd52a 214-223
+src/client/locales.ts
+  h_18676a549cd52a 263-268
+src/kv.ts
+  h_18676a549cd52a 32,34-35
+src/policy.ts
+  h_18676a549cd52a 83-87,90
+tests/dreaming.spec.ts
+  h_18676a549cd52a 1-84
+tests/panel-settings.spec.tsx
+  h_18676a549cd52a 35
+tests/policy.spec.ts
+  h_18676a549cd52a 256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ceb45eaf6bdc84afd1f2831f61ddd1868467c79e",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
