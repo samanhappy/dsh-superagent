@@ -25,6 +25,7 @@ A dropped acknowledgement will never arrive either: do not resend it elsewhere, 
 Do not scan old history to backfill acknowledgements.
 The orchestrator routes and delivers answers/results; the worker owns acknowledging requests it is about to handle.
 Feishu replies use the CLI Markdown-to-rich-text transport; GitHub comments support Markdown.
+A WeCom reply may attach local image files by absolute path; another Channel refuses one.
 100 words is a hard ceiling, not a writing target.
 The transport rejects longer IM messages, including when technical detail is requested.
 Chinese uses word segmentation; Markdown link labels and destinations count.

@@ -52,6 +52,11 @@ export interface SourceChannel<C> {
   /** Whether a reply may still go to `address`; without it, every address may receive replies. */
   allowed?(address: Record<string, string>, config: C): boolean
   /**
+   * Whether the Channel sends images: an outbound message that names `images` is refused for a kind without this, so the
+   * agent that wrote it learns to send the text alone instead of a delivery that retries forever.
+   */
+  supportsImages?: true
+  /**
    * Sends a message idempotently by ID; returns `'gone'` when the target conversation no longer accepts replies.
    * @throws when delivery failed but may succeed on a later retry.
    */

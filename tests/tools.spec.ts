@@ -255,6 +255,13 @@ it('returns where a reply stands: sent, or dropped when its conversation can no 
   expect(await reply('修好了，请看 PR。')).toEqual({ status: 'dropped' })
 })
 
+it('refuses a reply that attaches images on a Channel that cannot carry them, so the agent rewrites it', async () => {
+  const { ticket, sessionId } = await h.acceptedTicket(feishu('9', '@bot 修一下回归'))
+  await h.runTool(sessionId, 'orchestrator_report', { state: 'ready', summary: 'Done.' })
+  await expect(h.runTool(h.runtime.masterId, 'orchestrator_reply',
+    { ticket_id: ticket.id, purpose: 'result', text: '修好了。', images: ['/tmp/chart.png'] })).rejects.toThrow('cannot send images')
+})
+
 it('checks an acknowledgement against the IM word limit, not a character count', async () => {
   const trigger = feishu('1', '@bot 修一下回归')
   h.runtime.receive(trigger); await h.runtime.idle()

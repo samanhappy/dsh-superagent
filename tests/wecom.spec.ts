@@ -1,20 +1,29 @@
+import { createHash } from 'node:crypto'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { WebSocketServer } from 'ws'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { threadKey } from '../src/core/index.ts'
 import { triggerMessage } from '../src/executor/dsh.ts'
 import { WecomConfigSchema } from '../src/sources/wecom.ts'
-import { sendWecom, truncateWecom, WECOM_MARKDOWN_MAX_BYTES } from '../src/sources/wecom-channel.ts'
+import { sendWecom, truncateWecom, WECOM_IMAGES_MAX, WECOM_MARKDOWN_MAX_BYTES } from '../src/sources/wecom-channel.ts'
 import { bindWecomTranscript, forgetWecom, rememberWecom, wecomThreadContext, WECOM_RECENT_MESSAGES } from '../src/sources/wecom-read.ts'
 import { wecomText, wecomTrigger, wecomTriggerId } from '../src/sources/wecom-trigger.ts'
-import { setActiveWecom, WecomConnection, type SocketListener, type WecomFrame, type WecomSocketLike } from '../src/sources/wecom-ws.ts'
+import { setActiveWecom, WecomConnection, WECOM_UPLOAD_CHUNK_BYTES, type SocketListener, type WecomFrame, type WecomSocketLike } from '../src/sources/wecom-ws.ts'
 
 /** A scripted WebSocket: it records what the connection writes and replays frames on demand. */
 class FakeSocket implements WecomSocketLike {
   readonly sent: string[] = []
+  /** Answers the frames a test cares about, the way WeCom acks a request by its `req_id`. */
+  answering?: (frame: WecomFrame, reply: (frame: unknown) => void) => void
   private readonly listeners = new Map<string, SocketListener[]>()
-  send(data: string): void { this.sent.push(data) }
+  send(data: string): void {
+    this.sent.push(data)
+    this.answering?.(JSON.parse(data) as WecomFrame, frame => queueMicrotask(() => this.push(frame)))
+  }
   close(): void { /* Nothing to release. */ }
   addEventListener(type: 'open' | 'message' | 'close' | 'error', listener: SocketListener): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener])
@@ -27,6 +36,26 @@ class FakeSocket implements WecomSocketLike {
   last(): WecomFrame { return this.frames().at(-1)! }
 }
 const robot = { botId: 'bot-1', secret: 'secret-1' }
+/** Answers upload frames as WeCom does: an upload id from init, nothing for a chunk, and the media id from finish. */
+const answeringUploads = (socket: FakeSocket): void => {
+  socket.answering = (frame, reply) => {
+    const req_id = frame.headers.req_id
+    if (frame.cmd === 'aibot_upload_media_init') reply({ headers: { req_id }, errcode: 0, body: { upload_id: 'upload-1' } })
+    else if (frame.cmd === 'aibot_upload_media_chunk') reply({ headers: { req_id }, errcode: 0 })
+    else if (frame.cmd === 'aibot_upload_media_finish') reply({ headers: { req_id }, errcode: 0, body: { media_id: 'media-1' } })
+    else if (frame.cmd === 'aibot_send_msg') reply({ headers: { req_id }, errcode: 0 })
+  }
+}
+/** A temporary directory of image files, removed once this file's tests are done. */
+const imagesDirectory = mkdtempSync(join(tmpdir(), 'wecom-images-'))
+afterAll(() => { rmSync(imagesDirectory, { recursive: true, force: true }) })
+/** A PNG header, which is what the Channel sniffs before it accepts a file as an image. */
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+const imageFile = (name: string, bytes: Buffer): string => {
+  const path = join(imagesDirectory, name)
+  writeFileSync(path, bytes)
+  return path
+}
 const handlers = () => ({ onReady: vi.fn(), onMessage: vi.fn(), onEvent: vi.fn(), onError: vi.fn(), onClosed: vi.fn() })
 const opened = (): { socket: FakeSocket; client: WecomConnection; h: ReturnType<typeof handlers> } => {
   const socket = new FakeSocket()
@@ -137,6 +166,29 @@ describe('wecom long connection', () => {
     expect(client.isTakenOver).toBe(true)
     expect(h.onClosed).toHaveBeenCalledWith(expect.any(String), true)
   })
+  it('uploads an image in init, chunk and finish frames over the connection', async () => {
+    const { socket, client } = opened()
+    answeringUploads(socket)
+    const data = readFileSync(imageFile('chart.png', PNG))
+    await expect(client.uploadImage(data, 'chart.png')).resolves.toBe('media-1')
+    const uploads = socket.frames().filter(frame => frame.cmd?.startsWith('aibot_upload'))
+    expect(uploads.map(frame => frame.cmd)).toEqual(['aibot_upload_media_init', 'aibot_upload_media_chunk', 'aibot_upload_media_finish'])
+    expect(uploads[0]!.body).toMatchObject({ type: 'image', filename: 'chart.png', total_size: PNG.length, total_chunks: 1,
+      md5: createHash('md5').update(PNG).digest('hex') })
+    expect(uploads[1]!.body).toMatchObject({ upload_id: 'upload-1', chunk_index: 0, base64_data: PNG.toString('base64') })
+    expect(uploads[2]!.body).toMatchObject({ upload_id: 'upload-1' })
+    client.close('test')
+  })
+  it('splits an upload into 512 KiB chunks numbered from zero', async () => {
+    const { socket, client } = opened()
+    answeringUploads(socket)
+    const data = Buffer.alloc(WECOM_UPLOAD_CHUNK_BYTES + 1, 7)
+    await client.uploadImage(data, 'big.png')
+    const chunks = socket.frames().filter(frame => frame.cmd === 'aibot_upload_media_chunk')
+    expect(chunks.map(frame => (frame.body as { chunk_index: number }).chunk_index)).toEqual([0, 1])
+    expect(socket.frames().find(frame => frame.cmd === 'aibot_upload_media_init')!.body).toMatchObject({ total_chunks: 2, total_size: data.length })
+    client.close('test')
+  })
   it('connects to a gateway that matches handshake header names case-sensitively, as WeCom does', async () => {
     const server = createServer()
     const gateway = new WebSocketServer({ noServer: true })
@@ -185,6 +237,32 @@ describe('wecom channel', () => {
     setActiveWecom(undefined)
     await expect(sendWecom({} as never, { id: 'out-2', kind: 'reply', text: 'Done.',
       channel: { source: 'wecom', thread: 'wecom:chat-1', address: { chatId: 'chat-1', messageId: 'm-1' } } })).rejects.toThrow('not open')
+  })
+  it('uploads the images a reply attaches and sends them after its text', async () => {
+    const { socket, client } = opened()
+    answeringUploads(socket)
+    setActiveWecom(client)
+    const path = imageFile('shot.png', PNG)
+    await expect(sendWecom({} as never, { id: 'out-3', kind: 'reply', text: 'See the chart.', images: [path],
+      channel: { source: 'wecom', thread: 'wecom:chat-1', address: { chatId: 'chat-1', messageId: 'm-1' } } })).resolves.toBe('sent')
+    const bodies = socket.frames().filter(frame => frame.cmd === 'aibot_send_msg').map(frame => frame.body)
+    expect(bodies).toEqual([{ chatid: 'chat-1', msgtype: 'markdown', markdown: { content: 'See the chart.' } },
+      { chatid: 'chat-1', msgtype: 'image', image: { media_id: 'media-1' } }])
+    client.close('test')
+  })
+  it('refuses an image a reply cannot send before its text goes out', async () => {
+    const { socket, client } = opened()
+    answeringUploads(socket)
+    setActiveWecom(client)
+    const reply = (images: string[]) => sendWecom({} as never, { id: 'out-4', kind: 'reply', text: 'See.', images,
+      channel: { source: 'wecom', thread: 'wecom:chat-1', address: { chatId: 'chat-1', messageId: 'm-1' } } })
+    await expect(reply([join(imagesDirectory, 'missing.png')])).rejects.toThrow('cannot be read')
+    await expect(reply([imageFile('notes.txt', Buffer.from('not an image'))])).rejects.toThrow('not a PNG')
+    await expect(reply(['relative.png'])).rejects.toThrow('absolute')
+    const shot = imageFile('too-many.png', PNG)
+    await expect(reply(Array.from({ length: WECOM_IMAGES_MAX + 1 }, () => shot))).rejects.toThrow(`at most ${WECOM_IMAGES_MAX} images`)
+    expect(socket.frames().filter(frame => frame.cmd === 'aibot_send_msg')).toEqual([])
+    client.close('test')
   })
   it('truncates markdown to the byte limit WeCom accepts', () => {
     const truncated = truncateWecom('中'.repeat(WECOM_MARKDOWN_MAX_BYTES))

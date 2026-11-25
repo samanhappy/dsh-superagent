@@ -3,6 +3,7 @@
  * The wire protocol is the documented one behind `@wecom/aibot-node-sdk`: `{ cmd, headers: { req_id }, body }` both ways,
  * an ack carrying `errcode`, and `aibot_msg_callback` / `aibot_event_callback` frames pushed by WeCom.
  */
+import { createHash } from 'node:crypto'
 import WebSocket from 'ws'
 export const DEFAULT_WECOM_WS_URL = 'wss://openws.work.weixin.qq.com'
 /** How often the connection pings; WeCom drops a silent connection. */
@@ -11,6 +12,9 @@ export const WECOM_HEARTBEAT_MS = 30_000
 export const WECOM_ACK_TIMEOUT_MS = 15_000
 /** Unanswered pings after which the connection is treated as dead, even if the socket still looks open. */
 export const WECOM_MAX_MISSED_PONGS = 2
+/** Media uploads go over the same connection in at most 512 KiB chunks, and one upload session takes at most 100. */
+export const WECOM_UPLOAD_CHUNK_BYTES = 512 * 1024
+export const WECOM_UPLOAD_MAX_CHUNKS = 100
 
 /** One WebSocket frame; `headers.req_id` ties a reply or an ack to the request that caused it. */
 export interface WecomFrame { cmd?: string; headers: { req_id: string } & Record<string, unknown>; body?: unknown; errcode?: number; errmsg?: string }
@@ -89,13 +93,40 @@ export class WecomConnection {
   close(reason: string): void { this.finish(reason) }
   /** Sends a markdown reply into `chatid` (a group id, or the userid of a single chat) and waits for its ack. */
   async send(chatid: string, body: Record<string, unknown>): Promise<WecomFrame> {
-    if (!this.isAuthenticated) throw new Error('The WeCom long connection is not authenticated')
-    const reqId = requestId('send')
+    return this.request('aibot_send_msg', { chatid, ...body })
+  }
+  /**
+   * Uploads an image and returns the `media_id` an image message names. WeCom runs the upload on the connection the bot
+   * already authenticated: `aibot_upload_media_init`, one `aibot_upload_media_chunk` per 512 KiB, then
+   * `aibot_upload_media_finish` answers the id. It lives three days, which is longer than any reply retry should take.
+   */
+  async uploadImage(data: Buffer, filename: string): Promise<string> {
+    const totalChunks = Math.max(1, Math.ceil(data.length / WECOM_UPLOAD_CHUNK_BYTES))
+    if (totalChunks > WECOM_UPLOAD_MAX_CHUNKS) throw new Error(`The image needs ${totalChunks} chunks; WeCom accepts at most ${WECOM_UPLOAD_MAX_CHUNKS}`)
+    const init = await this.request('aibot_upload_media_init', { type: 'image', filename, total_size: data.length, total_chunks: totalChunks,
+      md5: createHash('md5').update(data).digest('hex') })
+    const uploadId = (init.body as { upload_id?: unknown } | undefined)?.upload_id
+    if (typeof uploadId !== 'string' || !uploadId) throw new Error('WeCom did not return an upload id for the image')
+    // Chunks go one at a time, and `chunk_index` counts from zero: both official SDKs send one chunk in flight, because
+    // WeCom answers concurrent chunks with a system error, and identify them this way whatever the document's wording.
+    for (let index = 0; index < totalChunks; index += 1) {
+      const chunk = data.subarray(index * WECOM_UPLOAD_CHUNK_BYTES, (index + 1) * WECOM_UPLOAD_CHUNK_BYTES)
+      await this.request('aibot_upload_media_chunk', { upload_id: uploadId, chunk_index: index, base64_data: chunk.toString('base64') })
+    }
+    const finish = await this.request('aibot_upload_media_finish', { upload_id: uploadId })
+    const mediaId = (finish.body as { media_id?: unknown } | undefined)?.media_id
+    if (typeof mediaId !== 'string' || !mediaId) throw new Error('WeCom did not return a media id for the image')
+    return mediaId
+  }
+  /** Writes one frame and resolves with the ack WeCom answers for its `req_id`; any other code rejects. */
+  private request(cmd: string, body: Record<string, unknown>): Promise<WecomFrame> {
+    if (!this.isAuthenticated) return Promise.reject(new Error('The WeCom long connection is not authenticated'))
+    const reqId = requestId(cmd.replace('aibot_', ''))
     const ack = new Promise<WecomFrame>((resolve, reject) => {
-      const timer = setTimeout(() => { this.waiting.delete(reqId); reject(new Error('WeCom did not acknowledge the message in time')) }, WECOM_ACK_TIMEOUT_MS)
+      const timer = setTimeout(() => { this.waiting.delete(reqId); reject(new Error('WeCom did not acknowledge the request in time')) }, WECOM_ACK_TIMEOUT_MS)
       this.waiting.set(reqId, { resolve, reject, timer })
     })
-    this.write({ cmd: 'aibot_send_msg', headers: { req_id: reqId }, body: { chatid, ...body } })
+    this.write({ cmd, headers: { req_id: reqId }, body })
     return ack
   }
   private write(frame: WecomFrame): void {

@@ -20,7 +20,7 @@ const IMAGE_KEY = /^img-(\d+)$/
 const PNG_MAGIC = Buffer.from('89504e470d0a1a0a', 'hex')
 const EXTENSIONS: Record<ImageMediaType, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif' }
 /** Identifies the image by its own bytes, because a download's content type and name are not trustworthy. */
-function wecomImageType(data: Buffer): ImageMediaType | undefined {
+export function wecomImageType(data: Buffer): ImageMediaType | undefined {
   if (data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)) return 'image/png'
   if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'image/jpeg'
   const header = data.subarray(0, 6).toString('latin1')

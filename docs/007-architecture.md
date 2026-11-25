@@ -182,7 +182,7 @@ Each kind has a health entry under its name. It reports an error once one of its
 
 ### Sources
 
-Sources extend the host through `SourceKind`, defined in `src/sources/kind.ts`. A kind declares its identity, title, description, configuration `schema` and `fields`, derived `facts`, and `health` entries. Optional behavior includes `scope`, a `channel` (`allowed`, `send`, `link`), `threadContext`, `find`, `policy`, `environment`, `refreshLabels` and an interactive `login` the panel drives by showing its QR code and saving the account it returns.
+Sources extend the host through `SourceKind`, defined in `src/sources/kind.ts`. A kind declares its identity, title, description, configuration `schema` and `fields`, derived `facts`, and `health` entries. Optional behavior includes `scope`, a `channel` (`allowed`, `supportsImages`, `send`, `check`, `link`), `threadContext`, `find`, `policy`, `environment`, `refreshLabels` and an interactive `login` the panel drives by showing its QR code and saving the account it returns.
 
 `SourceRegistry` (`registry.ts`) owns registered kinds and stored instances, and implements the Engine's `SourceScope`. Registration claims health entries on `HealthBoard`; duplicate claims and reserved `sync:` names are refused. A SourceContext writes only through its registration's claimed entries, so reports after unregistration do nothing.
 
@@ -377,10 +377,10 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `src/sources/admission-context.ts` | The bounded window an assessment starts from: the first pages of a Trigger's Thread, read through its kind, and the messages around the Trigger |
 | `src/sources/feishu-image.ts` | Reads a Feishu message's image as an attachment for the assessing Session |
 | `src/sources/wecom.ts` | The WeCom kind and plugin entry, exported as `./wecom-watch`: the bot's long connection, kept open with backoff, health and reconnect |
-| `src/sources/wecom-ws.ts` | The WeCom intelligent-robot long connection: subscription, heartbeat, message and event callbacks, and markdown replies |
+| `src/sources/wecom-ws.ts` | The WeCom intelligent-robot long connection: subscription, heartbeat, message and event callbacks, markdown replies, and the chunked upload that gives an image reply its `media_id` |
 | `src/sources/wecom-trigger.ts` | WeCom callbacks as Triggers, conversation addresses and the text a media message shows |
 | `src/sources/wecom-image.ts` | Reads a WeCom message's image: downloads the encrypted URL the callback carries, decrypts it with the message's `aeskey` and commits it as an attachment for the assessing Session |
-| `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, `sent` or `gone` |
+| `src/sources/wecom-channel.ts` | The WeCom Channel: markdown replies over the connection, the images a reply attaches, and `sent` or `gone` |
 | `src/sources/wecom-read.ts` | The conversation window the Source remembers with each message's images, recovered from the Triggers stored on the Thread after a restart, read as `wecomThreadContext` |
 | `src/sources/weixin.ts` | The WeChat kind and plugin entry, exported as `./weixin-watch`: the iLink bot long poll, kept running with backoff and health, and its login button |
 | `src/sources/weixin-api.ts` | The iLink bot API: request headers and `base_info`, `getupdates` long polling with its cursor, `sendmessage`, and the stale-token (`-14`) error |
@@ -434,7 +434,7 @@ Some generic modules still refer directly to GitHub or Feishu:
 | `tests/gitlab.spec.ts` | The GitLab Source on a `SourceContext`: Trigger translation, project polling and cursors, note reads, replies and resources |
 | `tests/pingcode.spec.ts` | The PingCode Source on a `SourceContext`: Trigger translation, project polling and cursors, comment reads, replies and resources |
 | `tests/commands.spec.ts` | CLI calls as the deployment's accounts, the Channels' answers, and repository- and project-scoped API calls |
-| `tests/wecom.spec.ts` | The WeCom Source: Trigger translation, the long connection's subscription, acks, callbacks and take-over, replies, and the conversation window assessments read |
+| `tests/wecom.spec.ts` | The WeCom Source: Trigger translation, the long connection's subscription, acks, callbacks and take-over, replies with their images and uploads, and the conversation window assessments read |
 | `tests/wecom-image.spec.ts` | Reads of a WeCom message's images: the marker keys, the download and AES decryption, and the refusals |
 | `tests/weixin.spec.ts` | The WeChat transport: Trigger translation, request headers and bodies, the long-poll cursor, replies, and the conversation window assessments read |
 | `tests/weixin-loop.spec.ts` | The WeChat kind and loop: its fields, scope, Policy rows and variables, a poll round that stores Triggers before moving the cursor, and the health of failures and a stale token |

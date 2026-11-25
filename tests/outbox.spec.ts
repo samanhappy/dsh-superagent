@@ -44,6 +44,22 @@ it('keeps a message for a Source that is not installed waiting, and sends it onc
   expect([h.runtime.outbox.status('waiting'), sent.map(message => message.id)]).toEqual(['sent', ['waiting']])
 })
 
+it('carries images through the receipt to a Channel that sends them, and refuses them for one that cannot', async () => {
+  const sent: OutboundMessage[] = []
+  const probe: SourceKind<Record<string, never>> = { kind: 'probe', title: { zh: '探针', en: 'Probe' }, description: { zh: '', en: '' }, health: [],
+    schema: z.object({}).strict(), fields: [],
+    channel: { supportsImages: true, send: async (_host, message) => { sent.push(message); return 'sent' }, link: () => ({ url: '', label: { zh: '探针', en: 'Probe' } }) } }
+  h.runtime.sources.register(probe)
+  h.runtime.outbox.send({ id: 'with-image', channel: { source: 'probe', thread: 'probe:1', address: {} }, text: 'See the chart.', kind: 'reply',
+    images: ['/tmp/chart.png'] })
+  await h.runtime.sendReplies()
+  expect(sent).toEqual([expect.objectContaining({ id: 'with-image', images: ['/tmp/chart.png'] })])
+  const refused: OutboundMessage = { id: 'no-images', channel: feishu('1', 'x').channel!, text: 'See.', kind: 'reply', images: ['/tmp/chart.png'] }
+  expect(() => h.runtime.outbox.send(refused)).toThrow('cannot send images')
+  // Nothing was recorded, so no receipt waits on a delivery that can never succeed.
+  expect(h.runtime.outbox.status('no-images')).toBeUndefined()
+})
+
 it('refuses an over-limit reply before queueing it for each IM Source, so the agent can rewrite it instead of retrying forever', () => {
   const text = Array.from({ length: IM_WORDS + 1 }, () => 'word').join(' ')
   const refuse = <C extends Record<string, unknown>>(kind: SourceKind<C>) => {

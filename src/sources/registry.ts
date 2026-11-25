@@ -167,8 +167,10 @@ export class SourceRegistry implements SourceScope {
   /** Throws when the message's Channel refuses it as written, so the Outbox can refuse a reply before queueing it. */
   check(message: OutboundMessage): void {
     const kind = this.kindFor(message.channel.source)
-    if (!kind?.channel?.check) return
-    kind.channel.check(message, this.configOf(message.channel.source, kind))
+    if (!kind?.channel) return
+    if (message.images?.length && !kind.channel.supportsImages)
+      throw new Error(`The ${kind.title.en} Channel cannot send images; send the text alone`)
+    kind.channel.check?.(message, this.configOf(message.channel.source, kind))
   }
   /** The configuration a Channel sees, resolved at send time so a saved target takes effect on the next reply. */
   private configOf(source: string, kind: SourceKind): Record<string, unknown> {
