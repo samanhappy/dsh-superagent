@@ -211,6 +211,16 @@ function EvalBlock() {
       <Section title={t('assessorModel')} hint={t('assessorModelHint')}>
         <ModelField id="dt-eval-model" value={value.model} onChange={model => edit({ model })} />
       </Section>
+      <Section title={t('dreamingTitle')} hint={t('dreamingIntro')}>
+        <Field label={t('dreamingEnabled')} hint={t('dreamingEnabledHint')}>
+          <Switch checked={value.dreaming.enabled} onChange={enabled => edit({ dreaming: { ...value.dreaming, enabled } })}
+            label={t('dreamingEnabled')} />
+        </Field>
+        <Field label={t('dreamingInterval')} hint={t('dreamingIntervalHint')}>
+          <Input type="number" min={1} max={168} required value={String(value.dreaming.intervalHours)}
+            onChange={event => edit({ dreaming: { ...value.dreaming, intervalHours: numberOf(event.target.value) ?? value.dreaming.intervalHours } })} />
+        </Field>
+      </Section>
     </Fields>
     <SaveBar {...draft} onDiscard={draft.discard} />
   </form>

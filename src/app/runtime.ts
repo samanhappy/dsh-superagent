@@ -38,6 +38,7 @@ import { pullEndNotices } from '../sources/github-pull.ts'
 import { HealthBoard } from '../infra/health.ts'
 import { Outbox } from './outbox.ts'
 import { ForwardingOutbox } from './forward.ts'
+import { Dreaming } from './dreaming.ts'
 import { Passes } from './passes.ts'
 import { Setup } from './setup.ts'
 import { feishuSettings } from '../sources/feishu.ts'
@@ -74,6 +75,7 @@ export class Runtime extends Service implements SourceHost {
   readonly outbox: Outbox
   readonly engine: Engine
   readonly passes: Passes
+  readonly dreaming: Dreaming
   readonly ready: Promise<void>
   private readonly board = new HealthBoard()
   private readonly runtimeHealth = this.board.claim('runtime', { state: 'starting', detail: '' })
@@ -187,6 +189,9 @@ export class Runtime extends Service implements SourceHost {
       // Update the `evals` health entry on every pass if an evaluation failed as unavailable within the last hour.
       const evals = board.claim('evals', { state: 'ready', detail: 'No unavailable Eval in the last hour' })
       const evaluateDue = () => { engine.evaluateDue(); evals.set(evalsHealth(store)) }
+      this.dreaming = new Dreaming({ store, sessions, settings: () => store.settings(),
+        configured: () => setup.configured(), paused: () => this.paused(), closing: () => this.closing(),
+        report: error => ctx.logger.warn('dsh-superagent: dreaming failed: %s', String(error)) })
       const passes = this.passes = new Passes({ engine: { receive: trigger => engine.receive(trigger), evaluateDue }, effects,
         health: this.runtimeHealth, lifetime: this.lifetime, configured: () => setup.configured(), closing: () => this.closing() })
       this.sourceDeps = { store, engine, outbox: replies, commands, sources, get ready() { return runtime.ready },
@@ -252,6 +257,7 @@ export class Runtime extends Service implements SourceHost {
     if (this.closing()) return
     this.executor.resume()
     this.passes.start()
+    this.dreaming.start()
     this.effects.start()
     this.runtimeHealth.set({ state: 'ready', detail: 'Orchestrator is ready', at: now() })
   }
@@ -268,7 +274,7 @@ export class Runtime extends Service implements SourceHost {
   /** Idempotent stop; concurrent or repeated calls share the same shutdown promise. */
   stop(): Promise<void> { return this.stopping ??= this.shutdown() }
   private async shutdown(): Promise<void> {
-    this.closingFlag = true; const passes = this.passes.stop(); this.stopped.abort()
+    this.closingFlag = true; this.dreaming.stop(); const passes = this.passes.stop(); this.stopped.abort()
     try {
       this.assessor.stop()
       const ids = [this.masterId, ...this.store.tickets.list().map(ticket => workerSessionId(ticket.id))]
