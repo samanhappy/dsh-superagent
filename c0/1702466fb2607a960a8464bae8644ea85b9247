@@ -1,0 +1,20 @@
+docs/006-deployment.md
+  h_18676a549cd52a 301
+src/app/dreaming.ts
+  h_18676a549cd52a 28,36,48
+src/app/runtime.ts
+  h_18676a549cd52a 193
+tests/dreaming.spec.ts
+  h_18676a549cd52a 8-9,19,52-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c01702466fb2607a960a8464bae8644ea85b9247",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
