@@ -15,7 +15,7 @@ export const DREAMING_PROMPT = `Idle retrospective ("dreaming"). No Ticket is op
 3. Persist each lesson where it changes future behavior:
    - About this agent: save a custom skill or edit the team prompt with orchestrator_prompts_save against its current revision (read \`prompts\` first). Keep it short and precise; one or two lessons beat a long list.
    - About a defect in the orchestration code: prepare a change to the dsh-superagent repository and open a merge request.
-   - About the 智能问数 product (sunmeng/ai-data): when the evidence makes the fix certain, open a merge request to dev with the change and its tests; when it is not certain, do not guess. Record the open question in the dreaming skill so the owner sees it, and raise it the next time the owner writes to you.
+   - About a repository this deployment works on (the GitHub or GitLab project its Source is configured for): when the evidence makes the fix certain, open a merge request with the change and its tests; when it is not certain, do not guess. Record the open question in the dreaming skill so the owner sees it, and raise it the next time the owner writes to you.
 4. Never change policy, admission rules or settings on your own; propose those to the owner instead.
 5. If nothing is worth persisting, end quietly. Do not message the owner about a routine review; only a ready, user-visible result or a material risk is worth a message.`
 

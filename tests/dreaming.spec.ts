@@ -66,7 +66,8 @@ describe('Dreaming', () => {
     expect(DREAMING_PROMPT).toContain('orchestrator_prompts_save')
     expect(DREAMING_PROMPT).toContain('merge request')
     expect(DREAMING_PROMPT).toContain('Never change policy')
-    expect(DREAMING_PROMPT).toContain('智能问数')
+    expect(DREAMING_PROMPT).toContain('Source is configured for')
+    expect(DREAMING_PROMPT).not.toMatch(/智能问数|ai-data|sunmeng/)
   })
 })
 
