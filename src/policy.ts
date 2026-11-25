@@ -80,8 +80,14 @@ export const PolicyConfigSchema = z.object({
   rules: z.array(RuleSchema).refine(rules => new Set(rules.map(rule => rule.id)).size === rules.length, 'Duplicate rule IDs').default(DEFAULT_RULES),
   sources: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), SourcePolicySchema).default({}),
 }).strict()
+/** Idle retrospective settings: whether the agent reviews its own recent work on a timer, and how often. */
+export const DreamingConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  intervalHours: z.number().int().min(1).max(168).default(24),
+}).strict()
 export const EvalConfigSchema = z.object({
   mode: z.enum(['off', 'observe', 'auto']).default('observe'),
+  dreaming: DreamingConfigSchema.default(() => DreamingConfigSchema.parse({})),
   timeoutSeconds: z.number().int().min(LIMITS.evalTimeoutSeconds.min).max(LIMITS.evalTimeoutSeconds.max).default(120),
   model: RoleModelSchema.nullable().default(null),
 }).strict()
