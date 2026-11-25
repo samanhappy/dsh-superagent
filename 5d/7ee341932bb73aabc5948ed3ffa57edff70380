@@ -1,0 +1,42 @@
+docs/006-deployment.md
+  h_18676a549cd52a 82-83
+docs/007-architecture.md
+  h_18676a549cd52a 185,380,383,437
+prompts/replies.md
+  h_18676a549cd52a 28
+src/app/tools/main.ts
+  h_18676a549cd52a 225,232-233,237-238
+src/core/ports.ts
+  h_18676a549cd52a 72-80
+src/core/replies.ts
+  h_18676a549cd52a 17-19,98-99
+src/sources/kind.ts
+  h_18676a549cd52a 54-58
+src/sources/registry.ts
+  h_18676a549cd52a 170-173
+src/sources/wecom-channel.ts
+  h_18676a549cd52a 1-4,7,14-16,34-55,58-60,67,69-74
+src/sources/wecom-image.ts
+  h_18676a549cd52a 23
+src/sources/wecom-ws.ts
+  h_18676a549cd52a 6,15-17,96-124,126,129
+src/sources/wecom.ts
+  h_18676a549cd52a 7,37
+tests/outbox.spec.ts
+  h_18676a549cd52a 47-62
+tests/tools.spec.ts
+  h_18676a549cd52a 258-264
+tests/wecom.spec.ts
+  h_18676a549cd52a 1-2,5-6,8,12,15,20-21,23-26,39-58,169-191,241-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d7ee341932bb73aabc5948ed3ffa57edff70380",
+  "prompts": {},
+  "humans": {
+    "h_18676a549cd52a": {
+      "author": "samanhappy <samanhappy@gmail.com>"
+    }
+  }
+}
